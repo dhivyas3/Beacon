@@ -26,6 +26,8 @@ export const CommonEnvSchema = z.object({
   /** Public base URL of the web app. Used to build reportUrl and statusUrl. */
   PUBLIC_URL: z.url().default('http://localhost:8080'),
   STORAGE_DIR: z.string().min(1).default('./data/storage'),
+  /** Redis key prefix for BullMQ queues. Lets several environments share one Redis. */
+  QUEUE_PREFIX: z.string().min(1).default('qahub'),
   /** HMAC secret for X-QAHub-Signature on callbacks. */
   WEBHOOK_SIGNING_SECRET: z
     .string()

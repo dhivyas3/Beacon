@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { EXAMPLE_SCAN } from './examples.js';
 import { CHECK_TYPES, FORM_MODES, SCAN_STATUSES } from '../constants.js';
 import { HttpUrlSchema, MetadataSchema, PaginationQuerySchema } from './common.js';
 import { ProgressSchema } from './progress.js';
@@ -44,7 +45,7 @@ export const ScanSchema = z
     statusUrl: z.string(),
     reportUrl: z.string(),
   })
-  .meta({ id: 'Scan' });
+  .meta({ id: 'Scan', example: EXAMPLE_SCAN });
 export type Scan = z.infer<typeof ScanSchema>;
 
 export const CheckResultSchema = z

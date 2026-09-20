@@ -26,6 +26,7 @@ export const healthRoutes: FastifyPluginAsyncZod = async (app) => {
   app.get(
     '/health',
     {
+      config: { auth: false, rateLimit: false },
       schema: {
         tags: ['System'],
         summary: 'Liveness probe',
@@ -40,6 +41,7 @@ export const healthRoutes: FastifyPluginAsyncZod = async (app) => {
   app.get(
     '/ready',
     {
+      config: { auth: false, rateLimit: false },
       schema: {
         tags: ['System'],
         summary: 'Readiness probe',

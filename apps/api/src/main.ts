@@ -6,7 +6,7 @@ import { buildServer } from './server.js';
 async function main(): Promise<void> {
   const config = loadConfig();
   const db = createDb();
-  const redis = new Redis(config.REDIS_URL, { maxRetriesPerRequest: 2, lazyConnect: false });
+  const redis = new Redis(config.REDIS_URL, { maxRetriesPerRequest: 2 });
 
   const app = await buildServer({ config, db, redis });
 

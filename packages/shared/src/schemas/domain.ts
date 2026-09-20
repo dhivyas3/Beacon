@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { EXAMPLE_ALLOWED_DOMAIN } from './examples.js';
 
 const HOSTNAME_PATTERN =
   /^(\*\.)?([a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)(\.[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?)*$/;
@@ -11,7 +12,7 @@ export const AllowedDomainSchema = z
     createdAt: z.iso.datetime(),
     createdByName: z.string().nullable(),
   })
-  .meta({ id: 'AllowedDomain' });
+  .meta({ id: 'AllowedDomain', example: EXAMPLE_ALLOWED_DOMAIN });
 export type AllowedDomain = z.infer<typeof AllowedDomainSchema>;
 
 export const CreateAllowedDomainBodySchema = z

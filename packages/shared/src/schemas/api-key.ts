@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { EXAMPLE_API_KEY } from './examples.js';
 import { SCOPES } from '../constants.js';
 
 export const ApiKeySchema = z
@@ -12,7 +13,7 @@ export const ApiKeySchema = z
     revokedAt: z.iso.datetime().nullable(),
     createdByName: z.string().nullable(),
   })
-  .meta({ id: 'ApiKey' });
+  .meta({ id: 'ApiKey', example: EXAMPLE_API_KEY });
 export type ApiKey = z.infer<typeof ApiKeySchema>;
 
 export const CreateApiKeyBodySchema = z
@@ -28,7 +29,10 @@ export type CreateApiKeyBody = z.infer<typeof CreateApiKeyBodySchema>;
 
 export const CreatedApiKeySchema = ApiKeySchema.extend({
   key: z.string().describe('The raw key. Returned exactly once, on creation.'),
-}).meta({ id: 'CreatedApiKey' });
+}).meta({
+  id: 'CreatedApiKey',
+  example: { ...EXAMPLE_API_KEY, key: 'qah_7Hk2mP9xRt4Vb8Nc1Zq6Ld3Sf5Wj0YaGe2UoIiKpXhM' },
+});
 export type CreatedApiKey = z.infer<typeof CreatedApiKeySchema>;
 
 export const API_KEY_PREFIX = 'qah_';

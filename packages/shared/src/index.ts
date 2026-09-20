@@ -14,3 +14,4 @@ export * from './schemas/scan.js';
 export * from './schemas/settings.js';
 export * from './schemas/events.js';
 export * from './env.js';
+export * from './schemas/examples.js';

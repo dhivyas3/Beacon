@@ -109,3 +109,39 @@ the initial migration by hand.
 Global de-duplication of links needs a place to hold every unique URL and the pages that
 reference it. A broken link then becomes one issue per referencing page, so "affects N pages"
 grouping works the same as for every other check.
+
+## 2026-09-20 Members and admins hold the same scopes
+
+A signed-in user gets `scans:read`, `scans:write` and `forms:submit` whatever their role, because the dashboard has to be able to start every kind of scan. The role only decides access to management routes (API keys, allowed domains, settings changes), which require an admin session. API keys can never call those routes, even with every scope.
+
+## 2026-09-20 Idempotent replays answer 202 with the original scan
+
+A repeated `Idempotency-Key` returns the same 202 body as the first call plus an `Idempotent-Replayed: true` header. The key is checked before the duplicate-scan rule, so a retry that arrives while the scan is running gets the original scan instead of a 409. Keys are stored as `actorKind:actorId:key` so two callers can reuse the same string.
+
+## 2026-09-20 Callback URLs must be public too
+
+Callback URLs go through the same SSRF check as scan targets and are not subject to the allowed-domains list. A callback receiver on a private network (for example n8n on a Docker network) is therefore refused. The supported setups are a public n8n URL or a reverse proxy in front of it. This is the safe default, and a deliberate allow-list for callback hosts can be added later.
+
+## 2026-09-20 CSRF: SameSite=Lax plus an Origin check
+
+Session cookies are `SameSite=Lax` and `HttpOnly`. On top of that, any state-changing request authenticated by a cookie is refused when its `Origin` header names a different host than `PUBLIC_URL` or the request host. Requests without an `Origin` header (curl, servers) pass, and API-key requests are not affected because they carry no ambient credential.
+
+## 2026-09-20 Rate limiting
+
+Limits are per API key or signed-in user, and per IP when anonymous, counted in Redis so several API replicas share them. The default is 120 requests a minute, set by `RATE_LIMIT_PER_MINUTE`. Sign-in is limited to 10 attempts a minute per IP. Health probes are exempt.
+
+## 2026-09-20 Ignoring an issue recomputes a completed scan
+
+Marking an issue ignored on a completed scan recounts open critical and warning issues, the page counters and the health score, so the report shows only what still needs attention. Running scans are not touched because the worker counts open issues when it finalises.
+
+## 2026-09-20 Pagination cursors
+
+List endpoints use opaque cursors (base64url of the last row id) with a stable sort. The grouped issues view groups in SQL, so its cursor encodes an offset. Any cursor that is not valid returns 400.
+
+## 2026-09-20 Settings precedence
+
+Values saved through `PATCH /settings` override environment defaults. A default form mode of `submit` is downgraded to `detect` for a caller that lacks the `forms:submit` scope, so a shared default can never be used to bypass the scope. An explicit `formMode: "submit"` without the scope is a 403.
+
+## 2026-09-20 Deferred to later phases
+
+The issue screenshot endpoint arrives with the storage package in Phase 3, when screenshots first exist. The `scan.cancelled` callback is sent from the cancel route in Phase 6 together with the other callbacks.

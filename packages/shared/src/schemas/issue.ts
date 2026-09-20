@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { EXAMPLE_ISSUE } from './examples.js';
 import { CHECK_TYPES, COMPARISON_LABELS, ISSUE_STATES, SEVERITIES } from '../constants.js';
 import { PaginationQuerySchema } from './common.js';
 
@@ -24,7 +25,7 @@ export const IssueSchema = z
       .describe('Versus the previous completed scan of this hostname. Null when there is none.'),
     createdAt: z.iso.datetime(),
   })
-  .meta({ id: 'Issue' });
+  .meta({ id: 'Issue', example: EXAMPLE_ISSUE });
 export type Issue = z.infer<typeof IssueSchema>;
 
 export const GroupedIssueSchema = z

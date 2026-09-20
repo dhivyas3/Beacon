@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { EXAMPLE_PROGRESS } from './examples.js';
 
 export const PROGRESS_PHASES = [
   'queued',
@@ -44,22 +45,5 @@ export const ProgressSchema = z
     estimatedFinishAt: z.iso.datetime().nullable(),
     queuePosition: z.number().int().min(1).nullable().describe('1-based, only while queued.'),
   })
-  .meta({
-    id: 'Progress',
-    example: {
-      phase: 'running',
-      percent: 41,
-      pagesFound: 214,
-      pagesDone: 87,
-      pagesTotal: 214,
-      linksChecked: 310,
-      linksTotal: 1240,
-      pagesPerMinute: 52,
-      elapsedSeconds: 101,
-      etaSeconds: 148,
-      estimating: false,
-      estimatedFinishAt: '2026-09-18T10:46:30.000Z',
-      queuePosition: null,
-    },
-  });
+  .meta({ id: 'Progress', example: EXAMPLE_PROGRESS });
 export type Progress = z.infer<typeof ProgressSchema>;

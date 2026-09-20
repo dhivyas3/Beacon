@@ -15,7 +15,7 @@ async function main(): Promise<void> {
   const connection = new Redis(config.REDIS_URL, { maxRetriesPerRequest: null });
 
   // One repeating job, shared by every worker instance, marks dead scans as failed.
-  const maintenance = new Queue(QUEUES.maintenance, { connection });
+  const maintenance = new Queue(QUEUES.maintenance, { connection, prefix: config.QUEUE_PREFIX });
   await maintenance.upsertJobScheduler(
     REAPER_SCHEDULER_ID,
     { every: REAPER_INTERVAL_MS },
@@ -26,7 +26,7 @@ async function main(): Promise<void> {
     async () => {
       await reapStaleScans(db, log);
     },
-    { connection, concurrency: 1 },
+    { connection, prefix: config.QUEUE_PREFIX, concurrency: 1 },
   );
   maintenanceWorker.on('failed', (job, error) => {
     log.error({ err: error, jobId: job?.id }, 'maintenance job failed');

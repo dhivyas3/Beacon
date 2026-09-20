@@ -121,3 +121,20 @@ export const FINALISING_SECONDS = 5;
 
 export const DEFAULT_SCAN_CHECKS: readonly CheckType[] = CHECK_TYPES;
 export const DEFAULT_FORM_MODE: FormMode = 'detect';
+
+/** Scopes granted to a signed-in dashboard user. Admin-only routes check the role separately. */
+export function scopesForRole(_role: Role): Scope[] {
+  return [...SCOPES];
+}
+
+/** BullMQ queue names shared by the API (producer) and the worker (consumer). */
+export const QUEUES = {
+  scan: 'scan',
+  callbacks: 'callbacks',
+  maintenance: 'maintenance',
+} as const;
+
+/** Payload of a job on the scan queue. The job id is the scan id. */
+export interface ScanJobData {
+  scanId: string;
+}
