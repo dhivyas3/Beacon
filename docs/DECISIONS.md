@@ -197,3 +197,43 @@ Discovery pulls `<a href>` values with a regular expression after removing scrip
 ## 2026-09-20 Identifiable user agent everywhere
 
 All HTTP requests send `QAHubBot/1.0 (website QA scan)`. Chromium keeps its normal user agent string and appends `QAHubBot/1.0`, so sites that sniff for browser features still work.
+
+## 2026-09-20 Web: polling now, server-sent events later
+
+The dashboard follows active scans with TanStack Query polling (1s for an open scan, 2s for the list, 15s when nothing is running, paused when the tab is hidden). It is simple, works through any proxy and survives reconnects for free. The SSE endpoint and client arrive in Phase 6, where the same query keys are updated from events, so components do not change.
+
+## 2026-09-20 Web: checks that are not built yet are visible but disabled
+
+`forms` and `seo` appear in the new-scan form and in scan defaults, greyed out and labelled "Runs when available", because the API already accepts them and hiding them would make Phase 5 look like a surprise. They are excluded from what the form submits.
+
+## 2026-09-20 Web: the webhook secret is revealed on request
+
+The secret comes from an environment variable, so it cannot be changed in the UI. `GET /settings/webhook-secret` (admin session only, `Cache-Control: no-store`) returns it so an admin can copy it into n8n. Settings shows a masked preview by default and fetches the secret only when the admin presses Reveal. API keys are the opposite: only a hash is stored, so a key is shown once at creation.
+
+## 2026-09-20 Web: members see settings read-only
+
+Members can see scan defaults but not keys, domains or webhooks. The tabs are hidden and an explanation is shown, rather than presenting screens that answer 403.
+
+## 2026-09-20 Web: development proxy keeps the browser's Host header
+
+Vite proxies `/api` with `changeOrigin: false` and targets `127.0.0.1`, not `localhost`. The API checks the `Origin` of state-changing requests against the request host, so rewriting Host would break sign-in. On Windows `localhost` can resolve to `::1` while the API listens on IPv4. In production, `deploy/nginx.conf` forwards `Host` as received for the same reason.
+
+## 2026-09-20 Web: a 401 re-checks the session instead of clearing it
+
+Any 401 invalidates the session query. If the session really ended, `/auth/me` answers 401 and the route guard redirects to sign in with a `next` parameter. Clearing the cache directly detached the observer and left people on a broken page.
+
+## 2026-09-20 Web: ignoring an issue is optimistic and keeps the report honest
+
+The row updates immediately and rolls back with a toast if the request fails. The API recomputes the scan's open counts, the page's counts, the per-check totals and the health score for completed scans, so the summary cards and check chips match what is listed. An undo action is offered in the confirmation toast.
+
+## 2026-09-20 Web: report filters live in the API, not the browser
+
+The report is paged, so filtering in the browser would only filter what has loaded. `checkType`, `severity`, `fingerprint` and `sort` are query parameters on the pages and issues endpoints, and each filter change is a new cursor-paginated query.
+
+## 2026-09-20 Web: deferred to Phase 6
+
+Export buttons (CSV and PDF), the command palette and the "fixed since last scan" list are not in the UI yet because their endpoints arrive in Phase 6. The "evidence drawer" is an expanding row plus a screenshot lightbox, which works at every width without a second panel.
+
+## 2026-09-20 Web: report and settings load on demand
+
+The report page carries the charting library, so it and settings are lazy-loaded. Sign-in and the dashboard stay in the main bundle, which dropped from about 1 MB to 566 kB (178 kB gzipped).

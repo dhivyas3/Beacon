@@ -333,6 +333,9 @@ describe('PATCH /scans/:id/issues/:issueId', () => {
   it('recalculates counts and score on a completed scan', async () => {
     const before = await ctx.db.scan.findUniqueOrThrow({ where: { id: scanId } });
     expect(before.criticalCount).toBe(4);
+    const imagesBefore = await ctx.db.checkResult.findFirstOrThrow({
+      where: { scanId, checkType: 'images' },
+    });
 
     const id = brokenImageIds[0] as string;
     await patch(id, { state: 'ignored', ignoreNote: 'accepted' });
@@ -344,11 +347,19 @@ describe('PATCH /scans/:id/issues/:issueId', () => {
     expect(after.healthScore).toBe(60);
     const page = await ctx.db.scanPage.findUniqueOrThrow({ where: { id: pageIds[0] as string } });
     expect(page.criticalCount).toBe(0);
+    const imagesAfter = await ctx.db.checkResult.findFirstOrThrow({
+      where: { scanId, checkType: 'images' },
+    });
+    expect(imagesAfter.issuesFound).toBe(imagesBefore.issuesFound - 1);
 
     await patch(id, { state: 'open' });
     const restored = await ctx.db.scan.findUniqueOrThrow({ where: { id: scanId } });
     expect(restored.criticalCount).toBe(4);
     expect(restored.healthScore).toBe(48);
+    const imagesRestored = await ctx.db.checkResult.findFirstOrThrow({
+      where: { scanId, checkType: 'images' },
+    });
+    expect(imagesRestored.issuesFound).toBe(imagesBefore.issuesFound);
   });
 
   it('groups show ignored only when every occurrence is ignored', async () => {
@@ -484,5 +495,49 @@ describe('GET /scans/:id/issues/:issueId/screenshot', () => {
       url: `/api/v1/scans/${scanId}/issues/${withShot}/screenshot`,
     });
     expect(res.statusCode).toBe(401);
+  });
+});
+
+describe('filters used by the report', () => {
+  it('lists the occurrences of one problem with fingerprint', async () => {
+    const res = await get(`/api/v1/scans/${scanId}/issues?fingerprint=fp-broken-image&limit=100`);
+    const { items } = res.json<{ items: IssueBody[] }>();
+    expect(items).toHaveLength(3);
+    expect(new Set(items.map((issue) => issue.fingerprint))).toEqual(new Set(['fp-broken-image']));
+    expect(new Set(items.map((issue) => issue.pageUrl)).size).toBe(3);
+  });
+
+  it('lists issues newest first with sort=newest', async () => {
+    const res = await get(`/api/v1/scans/${scanId}/issues?sort=newest&limit=100`);
+    const { items } = res.json<{ items: (IssueBody & { createdAt: string })[] }>();
+    const times = items.map((issue) => Date.parse(issue.createdAt));
+    expect(times).toEqual([...times].sort((a, b) => b - a));
+    expect(items[0]?.fingerprint).toBe('fp-robots'); // the last one inserted
+
+    const bad = await get(`/api/v1/scans/${scanId}/issues?sort=oldest`);
+    expect(bad.statusCode).toBe(400);
+  });
+
+  it('filters pages by the check or severity of their open issues', async () => {
+    const pagesWith = async (query: string) =>
+      (await get(`/api/v1/scans/${scanId}/pages?${query}`))
+        .json<{ items: { url: string }[] }>()
+        .items.map((page) => page.url);
+
+    expect(await pagesWith('checkType=seo')).toEqual([`https://${HOST}/`]);
+    expect((await pagesWith('checkType=images')).length).toBe(3);
+    expect(await pagesWith('checkType=forms')).toEqual([`https://${HOST}/blog`]);
+    expect(await pagesWith('checkType=links')).toEqual([]);
+    expect((await pagesWith('severity=warning')).length).toBe(1);
+    expect((await pagesWith('severity=critical&checkType=images')).length).toBe(3);
+    expect((await get(`/api/v1/scans/${scanId}/pages?checkType=vibes`)).statusCode).toBe(400);
+  });
+
+  it('ignores ignored issues when filtering pages', async () => {
+    const id = brokenImageIds[2] as string;
+    await ctx.db.scanIssue.update({ where: { id }, data: { state: 'ignored' } });
+    const res = await get(`/api/v1/scans/${scanId}/pages?checkType=images`);
+    expect(res.json<{ items: unknown[] }>().items).toHaveLength(2);
+    await ctx.db.scanIssue.update({ where: { id }, data: { state: 'open' } });
   });
 });

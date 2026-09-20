@@ -310,3 +310,34 @@ describe('OpenAPI validity', () => {
     expect((validated as { openapi: string }).openapi).toBe('3.1.0');
   });
 });
+
+describe('GET /settings/webhook-secret', () => {
+  it('reveals the signing secret to admins only, and never caches it', async () => {
+    const admin = await ctx.adminCookie();
+    const ok = await ctx.app.inject({
+      method: 'GET',
+      url: '/api/v1/settings/webhook-secret',
+      headers: { cookie: admin },
+    });
+    expect(ok.statusCode).toBe(200);
+    expect(ok.json()).toEqual({ secret: 'test-signing-secret-0123456789' });
+    expect(ok.headers['cache-control']).toBe('no-store');
+
+    const member = await ctx.createUser({ role: 'member' });
+    const cookie = await ctx.login(member.email, member.password);
+    const asMember = await ctx.app.inject({
+      method: 'GET',
+      url: '/api/v1/settings/webhook-secret',
+      headers: { cookie },
+    });
+    expect(asMember.statusCode).toBe(403);
+
+    const { key } = await ctx.createApiKey(['scans:read', 'scans:write', 'forms:submit']);
+    const withKey = await ctx.app.inject({
+      method: 'GET',
+      url: '/api/v1/settings/webhook-secret',
+      headers: bearer(key),
+    });
+    expect(withKey.statusCode).toBe(403);
+  });
+});

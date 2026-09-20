@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { PAGE_STATUSES } from '../constants.js';
+import { CHECK_TYPES, PAGE_STATUSES, SEVERITIES } from '../constants.js';
 import { PaginationQuerySchema } from './common.js';
 
 export const ScanPageSchema = z
@@ -24,5 +24,13 @@ export const ListPagesQuerySchema = PaginationQuerySchema.extend({
     .transform((value) => value === 'true')
     .optional(),
   q: z.string().trim().max(200).optional().describe('Substring match on the page URL.'),
+  checkType: z
+    .enum(CHECK_TYPES)
+    .optional()
+    .describe('Only pages with at least one open issue from this check.'),
+  severity: z
+    .enum(SEVERITIES)
+    .optional()
+    .describe('Only pages with at least one open issue of this severity.'),
 });
 export type ListPagesQuery = z.infer<typeof ListPagesQuerySchema>;

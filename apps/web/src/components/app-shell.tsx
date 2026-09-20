@@ -1,0 +1,140 @@
+import { useMutation, useQueryClient } from '@tanstack/react-query';
+import { LogOut, Monitor, Moon, Sun } from 'lucide-react';
+import { NavLink, Outlet, useNavigate } from 'react-router';
+import { toast } from 'sonner';
+import { api } from '@/api/client';
+import { useSession } from '@/api/hooks';
+import { Button } from '@/components/ui/button';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Tooltip } from '@/components/ui/tooltip';
+import { cn } from '@/lib/cn';
+import { useTheme } from '@/lib/theme';
+
+export function Logo({ className }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 32 32" className={cn('size-7', className)} aria-hidden>
+      <rect width="32" height="32" rx="8" fill="var(--accent)" />
+      <path
+        d="M9 16.5l4.5 4.5L23 11.5"
+        fill="none"
+        stroke="#fff"
+        strokeWidth="3"
+        strokeLinecap="round"
+        strokeLinejoin="round"
+      />
+    </svg>
+  );
+}
+
+const THEME_ICON = { light: Sun, dark: Moon, system: Monitor } as const;
+const THEME_LABEL = { light: 'Light', dark: 'Dark', system: 'System' } as const;
+
+export function ThemeToggle() {
+  const { preference, cycle } = useTheme();
+  const Icon = THEME_ICON[preference];
+  return (
+    <Tooltip content={`Theme: ${THEME_LABEL[preference]}`}>
+      <Button
+        variant="ghost"
+        size="icon"
+        onClick={cycle}
+        aria-label={`Theme: ${THEME_LABEL[preference]}. Switch theme`}
+      >
+        <Icon className="size-4" aria-hidden />
+      </Button>
+    </Tooltip>
+  );
+}
+
+function UserMenu() {
+  const session = useSession();
+  const client = useQueryClient();
+  const navigate = useNavigate();
+  const logout = useMutation({
+    mutationFn: api.logout,
+    onSettled: () => {
+      client.clear();
+      void navigate('/login', { replace: true });
+      toast.success('You are signed out');
+    },
+  });
+  const user = session.data?.user;
+  if (!user) return null;
+  const initial = (user.name || user.email).charAt(0).toUpperCase();
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <button
+          type="button"
+          className="flex size-8 items-center justify-center rounded-full bg-accent-soft text-[13px] font-semibold text-accent-text transition-colors hover:bg-border"
+          aria-label={`Account menu for ${user.name}`}
+        >
+          {initial}
+        </button>
+      </PopoverTrigger>
+      <PopoverContent className="w-64">
+        <p className="truncate text-sm font-semibold text-fg">{user.name}</p>
+        <p className="truncate text-[13px] text-muted">{user.email}</p>
+        <p className="mt-1 text-xs capitalize text-subtle">{user.role}</p>
+        <Button
+          className="mt-4 w-full"
+          size="sm"
+          loading={logout.isPending}
+          onClick={() => logout.mutate()}
+        >
+          <LogOut className="size-3.5" aria-hidden />
+          Sign out
+        </Button>
+      </PopoverContent>
+    </Popover>
+  );
+}
+
+const navLink = ({ isActive }: { isActive: boolean }) =>
+  cn(
+    'rounded-md px-3 py-1.5 text-sm font-medium transition-colors duration-150',
+    isActive ? 'bg-surface-2 text-fg' : 'text-muted hover:text-fg',
+  );
+
+/** Header, page container and the routes below it. */
+export function AppShell() {
+  const client = useQueryClient();
+  return (
+    <div className="min-h-dvh">
+      <a
+        href="#main"
+        className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-50 focus:rounded-md focus:bg-surface focus:px-3 focus:py-2 focus:shadow-pop"
+      >
+        Skip to content
+      </a>
+      <header className="sticky top-0 z-30 border-b border-border bg-surface/85 backdrop-blur">
+        <div className="mx-auto flex h-14 max-w-[1240px] items-center gap-4 px-4 sm:px-6">
+          <NavLink
+            to="/"
+            className="flex items-center gap-2 rounded-md text-[15px] font-semibold text-fg"
+            onClick={() => void client.invalidateQueries({ queryKey: ['scans'] })}
+          >
+            <Logo />
+            QA Hub
+          </NavLink>
+          <nav className="flex items-center gap-1" aria-label="Main">
+            <NavLink to="/" end className={navLink}>
+              Scans
+            </NavLink>
+            <NavLink to="/settings" className={navLink}>
+              Settings
+            </NavLink>
+          </nav>
+          <div className="ml-auto flex items-center gap-1.5">
+            <ThemeToggle />
+            <UserMenu />
+          </div>
+        </div>
+      </header>
+      <main id="main" className="mx-auto max-w-[1240px] px-4 py-6 sm:px-6 sm:py-8">
+        <Outlet />
+      </main>
+    </div>
+  );
+}

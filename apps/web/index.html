@@ -6,6 +6,21 @@
     <meta name="color-scheme" content="light dark" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>QA Hub</title>
+    <script>
+      // Apply the saved theme before first paint so there is no flash of the wrong theme.
+      (function () {
+        try {
+          var saved = localStorage.getItem('qa-hub-theme');
+          var dark =
+            saved === 'dark' ||
+            ((saved === null || saved === 'system') &&
+              window.matchMedia('(prefers-color-scheme: dark)').matches);
+          document.documentElement.setAttribute('data-theme', dark ? 'dark' : 'light');
+        } catch (e) {
+          document.documentElement.setAttribute('data-theme', 'light');
+        }
+      })();
+    </script>
   </head>
   <body>
     <div id="root"></div>

@@ -40,7 +40,8 @@ Each phase ends with `pnpm typecheck && pnpm lint && pnpm test` green and a conv
 4. **Web app** - design tokens, light/dark themes, sign in, dashboard (new scan, live table
    over SSE with polling fallback), scan detail (progress, live issue feed, cancel), report
    (summary cards, check chips, by-page / by-issue views, evidence drawer, screenshots),
-   settings (API keys, domains, secret, defaults).
+   settings (API keys, domains, secret, defaults). Delivered with polling: SSE moves to phase 6
+   with the other deferred items (see DECISIONS.md, "Web: deferred to Phase 6").
 5. **Forms and SEO** - `forms` check with `detect` / `validate_only` / `submit` modes and
    `forms:submit` scope enforcement, `seo` check, screenshots with element highlighting.
 6. **Integrations and polish** - signed callbacks with retries + `WebhookDelivery`, SSE

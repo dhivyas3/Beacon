@@ -59,6 +59,17 @@ export const ListIssuesQuerySchema = PaginationQuerySchema.extend({
   checkType: z.enum(CHECK_TYPES).optional(),
   state: z.enum(ISSUE_STATES).optional(),
   pageId: z.string().optional(),
+  fingerprint: z
+    .string()
+    .max(64)
+    .optional()
+    .describe('Only occurrences of one problem, as returned by `groupBy=fingerprint`.'),
+  sort: z
+    .enum(['severity', 'newest'])
+    .default('severity')
+    .describe(
+      '`newest` lists issues in the order they were found, newest first. Ignored when grouping.',
+    ),
   groupBy: z.enum(['fingerprint']).optional().describe('Group identical issues across pages.'),
 });
 export type ListIssuesQuery = z.infer<typeof ListIssuesQuerySchema>;

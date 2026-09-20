@@ -58,6 +58,7 @@ function buildWhere(scanId: string, query: ListIssuesQuery): Prisma.ScanIssueWhe
     ...(query.checkType ? { checkType: query.checkType } : {}),
     ...(query.state ? { state: query.state } : {}),
     ...(query.pageId ? { pageId: query.pageId } : {}),
+    ...(query.fingerprint ? { fingerprint: query.fingerprint } : {}),
   };
 }
 
@@ -71,7 +72,10 @@ export async function listIssues(
   const { rows, nextCursor } = await paginateById(query.limit, query.cursor, (args) =>
     db.scanIssue.findMany({
       where,
-      orderBy: [{ severity: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
+      orderBy:
+        query.sort === 'newest'
+          ? [{ createdAt: 'desc' }, { id: 'desc' }]
+          : [{ severity: 'asc' }, { createdAt: 'asc' }, { id: 'asc' }],
       include: issueInclude,
       ...args,
     }),
@@ -103,6 +107,7 @@ export async function listGroupedIssues(
   if (query.checkType) conditions.push(Prisma.sql`i."checkType" = ${query.checkType}`);
   if (query.state) conditions.push(Prisma.sql`i."state" = ${query.state}::"IssueState"`);
   if (query.pageId) conditions.push(Prisma.sql`i."pageId" = ${query.pageId}`);
+  if (query.fingerprint) conditions.push(Prisma.sql`i."fingerprint" = ${query.fingerprint}`);
 
   const offset = query.cursor === undefined ? 0 : Number.parseInt(decodeCursor(query.cursor), 10);
   if (!Number.isInteger(offset) || offset < 0) {
@@ -164,7 +169,7 @@ export async function listGroupedIssues(
 
 /**
  * Marks an issue ignored or open again. For a completed scan the open critical and warning counts,
- * the affected page's counts and the health score are recomputed, so the report reflects only what
+ * the affected page's and check's counts and the health score are recomputed, so the report reflects only what
  * still needs attention. Running scans are left alone: the worker counts open issues at the end.
  */
 export async function updateIssue(
@@ -203,6 +208,14 @@ export async function updateIssue(
           warningCount: warnings,
           healthScore: computeHealthScore({ critical, warnings, pagesTotal: scan.pagesTotal }),
         },
+      });
+      // The per-check total shown on the report chips follows the same open-issue rule.
+      const checkOpen = await tx.scanIssue.count({
+        where: { scanId, checkType: existing.checkType, state: 'open', severity: { not: 'info' } },
+      });
+      await tx.checkResult.updateMany({
+        where: { scanId, checkType: existing.checkType },
+        data: { issuesFound: checkOpen },
       });
       if (existing.pageId) {
         const [pageCritical, pageWarnings] = await Promise.all([

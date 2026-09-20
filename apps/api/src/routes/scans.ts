@@ -154,11 +154,22 @@ export const scanRoutes: FastifyPluginAsyncZod<ScanRouteOptions> = async (app, o
     },
     async (request): Promise<Page<ScanPage>> => {
       const scan = await scans.getRow(request.params.id);
-      const { status, hasIssues, q, cursor, limit } = request.query;
+      const { status, hasIssues, q, checkType, severity, cursor, limit } = request.query;
       const where: Prisma.ScanPageWhereInput = {
         scanId: scan.id,
         ...(status ? { status } : {}),
         ...(q ? { url: { contains: q, mode: 'insensitive' } } : {}),
+        ...(checkType || severity
+          ? {
+              issues: {
+                some: {
+                  state: 'open' as const,
+                  ...(checkType ? { checkType } : {}),
+                  ...(severity ? { severity } : {}),
+                },
+              },
+            }
+          : {}),
         ...(hasIssues === undefined
           ? {}
           : hasIssues

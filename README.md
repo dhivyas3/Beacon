@@ -2,7 +2,7 @@
 
 QA Hub validates live websites after launch. Submit a URL (from the dashboard, n8n, monday.com via n8n, or CI) and it assigns a scan ID, discovers every page, runs checks in the background, streams progress, and produces a report.
 
-> **Status: Phase 3 of 6 (scan engine).** Scans now run: the worker discovers pages, checks each one in a headless browser and verifies every link once. The `images`, `links`, `staging-urls` and `page-health` checks are live, with progress, cancellation, screenshots and an SSRF guard. The `forms` and `seo` checks arrive in Phase 5, the dashboard in Phase 4, callbacks and exports in Phase 6. See [docs/PLAN.md](docs/PLAN.md). This README describes what exists today.
+> **Status: Phase 4 of 6 (web app).** You can sign in, start scans, watch them run and read the report in the dashboard. The `images`, `links`, `staging-urls` and `page-health` checks are live. The `forms` and `seo` checks arrive in Phase 5, and callbacks, live SSE updates, CSV/PDF export and the command palette in Phase 6. See [docs/PLAN.md](docs/PLAN.md). This README describes what exists today.
 
 ## Quick start
 
@@ -33,6 +33,19 @@ pnpm dev                 # api :3000, worker, web :5173
 `pnpm dev:services` needs a `redis-server` binary. It looks for `REDIS_SERVER_BIN`, then `.tools/redis/`, then `PATH`.
 
 The worker drives Chromium. Install it once with `pnpm --filter @qa-hub/worker exec playwright install chromium` (the Docker image does this for you).
+
+### The dashboard
+
+Open http://localhost:5173 and sign in with the seeded admin. In development the Vite server proxies `/api` to the API on `127.0.0.1:3000` (override with `VITE_API_TARGET`), so the session cookie and the CSRF check behave as they do in production.
+
+| Screen | What it does |
+| --- | --- |
+| Scans | Start a scan, search and filter, see live progress for active scans, open a report |
+| Scan in progress | Percentage, phase, pages per minute, elapsed time, estimated finish, and issues as they are found. Cancel with confirmation |
+| Report | Health score with change since the last scan, score trend, findings by check, and issues by page or grouped across pages. Each issue has its evidence and a screenshot. Ignore or reopen issues |
+| Settings | Create and revoke API keys (shown once), allowed domains, the webhook signing secret, scan defaults. Non-admins see the defaults read-only |
+
+The dashboard follows scans by polling once a second while a scan is active. Live server-sent events replace this in Phase 6.
 
 ### Try a scan on the fixture site
 
@@ -69,7 +82,7 @@ flowchart LR
 | --- | --- |
 | `apps/api` | Public `/api/v1` API, sessions and API keys, OpenAPI at `/api/docs` |
 | `apps/worker` | Scan engine: discovery, browser pool, checks, link verification, progress, stale-scan reaper |
-| `apps/web` | React 19 dashboard |
+| `apps/web` | React 19 dashboard: Vite, React Router, TanStack Query, Tailwind, Radix, Recharts |
 | `packages/shared` | Zod schemas (the API contract), progress and ETA maths, health score, URL utilities, env parsing |
 | `packages/net` | SSRF guard and the HTTP client for every user-supplied URL: DNS pinning, redirect re-checks, size and time limits |
 | `packages/storage` | Storage interface with a local disk implementation, used for screenshots |
@@ -86,6 +99,7 @@ flowchart LR
 | `pnpm lint` | ESLint and Prettier check |
 | `pnpm test` | Unit and integration tests (starts its own Postgres and Redis if none are configured) |
 | `pnpm dev` | Watch mode for api, worker and web |
+| `pnpm --filter @qa-hub/web test` | Web component and page tests (Vitest, Testing Library, jsdom) |
 | `pnpm db:migrate` | Apply migrations |
 | `pnpm db:seed` | Create the first admin from `SEED_ADMIN_*` |
 

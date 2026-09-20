@@ -57,6 +57,10 @@ local `redis-server` (from `PATH` or `REDIS_SERVER_BIN`) are started on random p
 - Web: pages under `src/pages`, API hooks under `src/api`, shared UI in `src/components/ui`.
   Microcopy in sentence case, verb-first buttons. Every async view has skeleton, empty and
   error states.
+- Web data goes through `apps/web/src/api/client.ts` (`api`, `ApiClientError`) and the TanStack Query hooks in `api/hooks.ts` (`keys` holds every query key). Components never call `fetch`. Active scans poll (1s detail, 2s list); nothing polls when idle.
+- Web colours are CSS variables in `src/index.css` (light and dark). Use the semantic Tailwind tokens (`text-fg`, `bg-surface`, `text-critical-text`), never raw hex values, so both themes and contrast stay correct.
+- Web tests use `fakeApi` from `src/test/fake-api.ts` (an in-memory `fetch`, keyed `'GET /scans/:id'`, records calls) and `renderApp(route)` from `src/test/render.tsx`. Find things by role and accessible name, as a person would. A fake route nobody registered answers 404, so a forgotten route fails loudly.
+- Checks that exist in the API but not in the worker yet (`forms`, `seo`) are listed and disabled in the UI through `UNAVAILABLE_CHECKS`. Remove them from that list when the check ships.
 - Commit messages follow Conventional Commits (`feat(api): ...`, `fix(worker): ...`).
 - Never scan a real third-party site in development or tests; use `fixtures/site`. Worker tests keep DNS and Chromium offline with `offlineResolver` and `OFFLINE_BROWSER_ARGS` from `apps/worker/src/test/harness.ts`.
 - A check is one file in `apps/worker/src/checks/` exporting a `Check` (`run` per page, optional `finalize` once per scan), registered in `checks/index.ts`. Keep the analysis in pure functions so it can be unit tested without a browser.

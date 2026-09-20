@@ -1,6 +1,193 @@
 @import 'tailwindcss';
+@import '@fontsource-variable/inter';
+@import '@fontsource-variable/jetbrains-mono';
 
-body {
-  margin: 0;
-  font-family: system-ui, sans-serif;
+/* Dark mode is driven by the data-theme attribute, set from the user's choice or system setting. */
+@custom-variant dark (&:where([data-theme='dark'], [data-theme='dark'] *));
+
+/*
+ * Design tokens. A neutral palette with one restrained accent. Red, amber and green mean status
+ * and nothing else. Text tokens are chosen for WCAG AA contrast on the surfaces they sit on.
+ */
+:root {
+  color-scheme: light;
+  --bg: #fafafa;
+  --surface: #ffffff;
+  --surface-2: #f4f4f5;
+  --border: #e4e4e7;
+  --border-strong: #d4d4d8;
+  --text: #18181b;
+  --text-muted: #52525b;
+  --text-subtle: #71717a;
+  --accent: #4f46e5;
+  --accent-hover: #4338ca;
+  --accent-fg: #ffffff;
+  --accent-soft: #eef2ff;
+  --accent-text: #4338ca;
+  --critical: #dc2626;
+  --critical-soft: #fef2f2;
+  --critical-text: #b91c1c;
+  --warning: #d97706;
+  --warning-soft: #fffbeb;
+  --warning-text: #92400e;
+  --success: #16a34a;
+  --success-soft: #f0fdf4;
+  --success-text: #15803d;
+  --track: #e4e4e7;
+  --ring: #4f46e5;
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.04), 0 1px 1px rgb(0 0 0 / 0.03);
+  --shadow-pop: 0 8px 24px rgb(0 0 0 / 0.1), 0 2px 6px rgb(0 0 0 / 0.06);
+}
+
+[data-theme='dark'] {
+  color-scheme: dark;
+  --bg: #0b0b0d;
+  --surface: #131316;
+  --surface-2: #1b1b1f;
+  --border: #26262b;
+  --border-strong: #35353c;
+  --text: #f4f4f5;
+  --text-muted: #a1a1aa;
+  --text-subtle: #8b8b94;
+  --accent: #6366f1;
+  --accent-hover: #7c7ff5;
+  --accent-fg: #ffffff;
+  --accent-soft: #1e1f3d;
+  --accent-text: #a5a8ff;
+  --critical: #f87171;
+  --critical-soft: #2a1416;
+  --critical-text: #fca5a5;
+  --warning: #fbbf24;
+  --warning-soft: #2a2010;
+  --warning-text: #fcd34d;
+  --success: #4ade80;
+  --success-soft: #10241a;
+  --success-text: #86efac;
+  --track: #2a2a30;
+  --ring: #818cf8;
+  --shadow: 0 1px 2px rgb(0 0 0 / 0.4);
+  --shadow-pop: 0 8px 24px rgb(0 0 0 / 0.5), 0 2px 6px rgb(0 0 0 / 0.4);
+}
+
+@theme inline {
+  --font-sans: 'Inter Variable', ui-sans-serif, system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono Variable', ui-monospace, SFMono-Regular, Menlo, monospace;
+
+  --color-bg: var(--bg);
+  --color-surface: var(--surface);
+  --color-surface-2: var(--surface-2);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-fg: var(--text);
+  --color-muted: var(--text-muted);
+  --color-subtle: var(--text-subtle);
+  --color-accent: var(--accent);
+  --color-accent-hover: var(--accent-hover);
+  --color-accent-fg: var(--accent-fg);
+  --color-accent-soft: var(--accent-soft);
+  --color-accent-text: var(--accent-text);
+  --color-critical: var(--critical);
+  --color-critical-soft: var(--critical-soft);
+  --color-critical-text: var(--critical-text);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-warning-text: var(--warning-text);
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-success-text: var(--success-text);
+  --color-track: var(--track);
+
+  --shadow-card: var(--shadow);
+  --shadow-pop: var(--shadow-pop);
+
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 12px;
+
+  --animate-indeterminate: indeterminate 1.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
+  --animate-fade-in: fade-in 150ms ease-out;
+  --animate-pop-in: pop-in 150ms ease-out;
+}
+
+@keyframes indeterminate {
+  0% {
+    transform: translateX(-100%);
+  }
+  100% {
+    transform: translateX(350%);
+  }
+}
+@keyframes fade-in {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+@keyframes pop-in {
+  from {
+    opacity: 0;
+    transform: translateY(4px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
+  }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    line-height: 1.5;
+    font-feature-settings: 'cv11', 'ss01';
+    -webkit-font-smoothing: antialiased;
+    text-rendering: optimizeLegibility;
+  }
+  h1,
+  h2,
+  h3 {
+    letter-spacing: -0.011em;
+  }
+  code,
+  kbd,
+  pre,
+  samp {
+    font-family: var(--font-mono);
+  }
+  /* Visible focus for keyboard users, on every interactive element. */
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+    border-radius: 4px;
+  }
+  ::selection {
+    background: color-mix(in srgb, var(--accent) 25%, transparent);
+  }
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
+  }
+}
+
+@layer utilities {
+  .tabular {
+    font-variant-numeric: tabular-nums;
+  }
+  .scroll-x {
+    overflow-x: auto;
+    scrollbar-width: thin;
+  }
 }
