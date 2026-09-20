@@ -1,0 +1,15 @@
+**/node_modules
+**/dist
+**/.turbo
+.git
+.github
+.tools
+data
+docs
+*.md
+.env
+.env.*
+!.env.example
+**/coverage
+**/playwright-report
+**/test-results

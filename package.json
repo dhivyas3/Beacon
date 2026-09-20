@@ -1,0 +1,34 @@
+{
+  "name": "qa-hub",
+  "private": true,
+  "version": "0.1.0",
+  "type": "module",
+  "packageManager": "pnpm@10.34.5",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "turbo run build",
+    "typecheck": "turbo run typecheck",
+    "lint": "eslint . && prettier --check .",
+    "format": "prettier --write .",
+    "test": "turbo run test",
+    "dev": "turbo run dev --parallel",
+    "dev:services": "pnpm --filter @qa-hub/testkit services",
+    "db:generate": "pnpm --filter @qa-hub/db generate",
+    "db:migrate": "pnpm --filter @qa-hub/db migrate",
+    "db:migrate:dev": "pnpm --filter @qa-hub/db migrate:dev",
+    "db:seed": "pnpm --filter @qa-hub/db seed"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.5",
+    "eslint": "^9.39.5",
+    "eslint-config-prettier": "^10.1.8",
+    "eslint-plugin-react-hooks": "^7.1.1",
+    "globals": "^16.0.0",
+    "prettier": "^3.9.8",
+    "turbo": "^2.11.2",
+    "typescript": "~5.9.3",
+    "typescript-eslint": "^8.70.0"
+  }
+}

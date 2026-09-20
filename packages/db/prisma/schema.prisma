@@ -1,0 +1,302 @@
+// QA Hub data model. IDs are prefixed nanoids generated in application code (see @qa-hub/shared newId).
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum Role {
+  admin
+  member
+}
+
+enum ScanStatus {
+  queued
+  discovering
+  running
+  completed
+  failed
+  cancelled
+}
+
+/// Sub-stage while a scan has status `running`.
+enum ScanStage {
+  pages
+  links
+  finalising
+}
+
+enum FormMode {
+  detect
+  validate_only
+  submit
+}
+
+enum PageStatus {
+  pending
+  done
+  error
+}
+
+enum Severity {
+  critical
+  warning
+  info
+}
+
+enum IssueState {
+  open
+  ignored
+}
+
+enum LinkKind {
+  internal
+  external
+}
+
+enum LinkState {
+  pending
+  done
+}
+
+model User {
+  id           String   @id
+  email        String   @unique
+  passwordHash String
+  name         String
+  role         Role     @default(member)
+  createdAt    DateTime @default(now())
+
+  sessions       Session[]
+  apiKeys        ApiKey[]
+  allowedDomains AllowedDomain[]
+  scans          Scan[]
+}
+
+model Session {
+  id        String   @id
+  userId    String
+  tokenHash String   @unique
+  userAgent String?
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model ApiKey {
+  id          String    @id
+  name        String
+  /// First characters of the raw key, shown in the UI.
+  prefix      String
+  /// sha256 of the raw key. The raw key is never stored.
+  keyHash     String    @unique
+  scopes      String[]
+  createdById String?
+  lastUsedAt  DateTime?
+  revokedAt   DateTime?
+  createdAt   DateTime  @default(now())
+
+  createdBy User?  @relation(fields: [createdById], references: [id], onDelete: SetNull)
+  scans     Scan[]
+}
+
+model AllowedDomain {
+  id          String   @id
+  /// Exact hostname, or `*.example.com` to match the apex and every subdomain.
+  hostname    String   @unique
+  note        String?
+  createdById String?
+  createdAt   DateTime @default(now())
+
+  createdBy User? @relation(fields: [createdById], references: [id], onDelete: SetNull)
+}
+
+/// Gap-free per-hostname run numbers.
+model HostnameCounter {
+  hostname String @id
+  last     Int    @default(0)
+}
+
+model Setting {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+}
+
+model Scan {
+  id        String     @id
+  url       String
+  hostname  String
+  runNumber Int
+  status    ScanStatus @default(queued)
+  stage     ScanStage?
+  checks    String[]
+  formMode  FormMode   @default(detect)
+
+  callbackUrl    String?
+  /// Stored and echoed back untouched.
+  metadata       Json?
+  /// `${actorId}:${Idempotency-Key header}`.
+  idempotencyKey String? @unique
+
+  triggeredByUserId   String?
+  triggeredByApiKeyId String?
+
+  // Aggregate counters, so the dashboard list is a single cheap query.
+  pagesFound    Int  @default(0)
+  pagesTotal    Int  @default(0)
+  pagesDone     Int  @default(0)
+  linksTotal    Int  @default(0)
+  linksChecked  Int  @default(0)
+  criticalCount Int  @default(0)
+  warningCount  Int  @default(0)
+  passedCount   Int  @default(0)
+  healthScore   Int?
+
+  // Progress maths (see docs/DECISIONS.md).
+  avgPageMs       Float?
+  avgLinkMs       Float?
+  pageConcurrency Int    @default(5)
+  linkConcurrency Int    @default(10)
+  seedDurationMs  Int?
+  progressPercent Int    @default(0)
+
+  errorMessage String?
+  heartbeatAt  DateTime?
+  createdAt    DateTime  @default(now())
+  startedAt    DateTime?
+  finishedAt   DateTime?
+
+  triggeredByUser   User?   @relation(fields: [triggeredByUserId], references: [id], onDelete: SetNull)
+  triggeredByApiKey ApiKey? @relation(fields: [triggeredByApiKeyId], references: [id], onDelete: SetNull)
+
+  pages      ScanPage[]
+  issues     ScanIssue[]
+  results    CheckResult[]
+  deliveries WebhookDelivery[]
+  links      ScanLink[]
+
+  @@unique([hostname, runNumber])
+  @@index([hostname, status])
+  @@index([status, createdAt])
+  @@index([createdAt])
+  @@index([status, heartbeatAt])
+}
+
+model ScanPage {
+  id            String     @id
+  scanId        String
+  url           String
+  status        PageStatus @default(pending)
+  httpStatus    Int?
+  durationMs    Int?
+  /// Groups structurally similar pages, for example `/properties/:slug`.
+  template      String?
+  criticalCount Int        @default(0)
+  warningCount  Int        @default(0)
+
+  scan    Scan             @relation(fields: [scanId], references: [id], onDelete: Cascade)
+  issues  ScanIssue[]
+  sources ScanLinkSource[]
+
+  @@unique([scanId, url])
+  @@index([scanId, status])
+}
+
+model ScanIssue {
+  id             String     @id
+  scanId         String
+  pageId         String?
+  checkType      String
+  severity       Severity
+  /// Hash used to group identical issues across pages.
+  fingerprint    String
+  message        String
+  selector       String?
+  resourceUrl    String?
+  evidence       Json       @default("{}")
+  screenshotPath String?
+  state          IssueState @default(open)
+  ignoreNote     String?
+  createdAt      DateTime   @default(now())
+
+  scan Scan      @relation(fields: [scanId], references: [id], onDelete: Cascade)
+  page ScanPage? @relation(fields: [pageId], references: [id], onDelete: Cascade)
+
+  @@index([scanId, severity])
+  @@index([scanId, fingerprint])
+  @@index([scanId, checkType])
+  @@index([scanId, createdAt])
+  @@index([pageId])
+}
+
+model CheckResult {
+  id           String @id
+  scanId       String
+  checkType    String
+  pagesChecked Int    @default(0)
+  issuesFound  Int    @default(0)
+
+  scan Scan @relation(fields: [scanId], references: [id], onDelete: Cascade)
+
+  @@unique([scanId, checkType])
+}
+
+/// Every unique link found during a scan, verified once (global de-duplication).
+model ScanLink {
+  id           String    @id
+  scanId       String
+  url          String
+  kind         LinkKind
+  state        LinkState @default(pending)
+  httpStatus   Int?
+  redirectHops Int       @default(0)
+  finalUrl     String?
+  error        String?
+  checkedAt    DateTime?
+
+  scan    Scan             @relation(fields: [scanId], references: [id], onDelete: Cascade)
+  sources ScanLinkSource[]
+
+  @@unique([scanId, url])
+  @@index([scanId, state])
+}
+
+/// Which pages reference a link, so a broken link becomes one issue per affected page.
+model ScanLinkSource {
+  id       String  @id
+  linkId   String
+  pageId   String
+  selector String?
+  text     String?
+
+  link ScanLink @relation(fields: [linkId], references: [id], onDelete: Cascade)
+  page ScanPage @relation(fields: [pageId], references: [id], onDelete: Cascade)
+
+  @@unique([linkId, pageId])
+  @@index([pageId])
+}
+
+model WebhookDelivery {
+  id             String    @id
+  scanId         String
+  event          String
+  url            String
+  attempt        Int
+  responseStatus Int?
+  error          String?
+  deliveredAt    DateTime?
+  createdAt      DateTime  @default(now())
+
+  scan Scan @relation(fields: [scanId], references: [id], onDelete: Cascade)
+
+  @@index([scanId])
+}

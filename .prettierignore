@@ -1,0 +1,12 @@
+node_modules
+dist
+build
+.turbo
+coverage
+pnpm-lock.yaml
+packages/db/prisma/migrations
+data
+playwright-report
+test-results
+*.md
+docs/n8n
