@@ -406,3 +406,83 @@ describe('PATCH /scans/:id/issues/:issueId', () => {
 function order(severity: string): number {
   return ['critical', 'warning', 'info'].indexOf(severity);
 }
+
+describe('GET /scans/:id/issues/:issueId/screenshot', () => {
+  const PNG = Buffer.from('89504e470d0a1a0a0000000d49484452', 'hex');
+  let withShot: string;
+  let withoutShot: string;
+
+  beforeAll(async () => {
+    withShot = brokenImageIds[0] as string;
+    withoutShot = brokenImageIds[1] as string;
+    await ctx.storage.put(`screenshots/${scanId}/${withShot}.png`, PNG);
+    await ctx.db.scanIssue.update({
+      where: { id: withShot },
+      data: { screenshotPath: `screenshots/${scanId}/${withShot}.png` },
+    });
+  });
+
+  it('serves the stored PNG with a private cache header', async () => {
+    const res = await ctx.app.inject({
+      method: 'GET',
+      url: `/api/v1/scans/${scanId}/issues/${withShot}/screenshot`,
+      headers: bearer(reader),
+    });
+    expect(res.statusCode).toBe(200);
+    expect(res.headers['content-type']).toBe('image/png');
+    expect(res.headers['cache-control']).toContain('private');
+    expect(res.rawPayload.equals(PNG)).toBe(true);
+  });
+
+  it('works with a session cookie so the dashboard can use it as an image source', async () => {
+    const cookie = await ctx.adminCookie();
+    const res = await ctx.app.inject({
+      method: 'GET',
+      url: `/api/v1/scans/${scanId}/issues/${withShot}/screenshot`,
+      headers: { cookie },
+    });
+    expect(res.statusCode).toBe(200);
+  });
+
+  it('links to it from the issue', async () => {
+    const res = await get(`/api/v1/scans/${scanId}/issues?limit=100`);
+    const issue = res.json<{ items: { id: string; screenshotUrl: string | null }[] }>().items;
+    expect(issue.find((i) => i.id === withShot)?.screenshotUrl).toBe(
+      `http://qa.test/api/v1/scans/${scanId}/issues/${withShot}/screenshot`,
+    );
+    expect(issue.find((i) => i.id === withoutShot)?.screenshotUrl).toBeNull();
+  });
+
+  it('answers 404 when the issue has no screenshot, or the file is gone, or the issue is unknown', async () => {
+    const none = await get(`/api/v1/scans/${scanId}/issues/${withoutShot}/screenshot`);
+    expect(none.statusCode).toBe(404);
+    expect(errorOf(none).message).toBe('This issue has no screenshot.');
+
+    await ctx.storage.delete(`screenshots/${scanId}/${withShot}.png`);
+    expect((await get(`/api/v1/scans/${scanId}/issues/${withShot}/screenshot`)).statusCode).toBe(
+      404,
+    );
+
+    expect((await get(`/api/v1/scans/${scanId}/issues/iss_missing/screenshot`)).statusCode).toBe(
+      404,
+    );
+  });
+
+  it('never serves a file outside the storage folder', async () => {
+    await ctx.db.scanIssue.update({
+      where: { id: withoutShot },
+      data: { screenshotPath: '../../../etc/passwd' },
+    });
+    const res = await get(`/api/v1/scans/${scanId}/issues/${withoutShot}/screenshot`);
+    expect(res.statusCode).toBe(404);
+    expect(res.body).not.toContain('root:');
+  });
+
+  it('needs authentication', async () => {
+    const res = await ctx.app.inject({
+      method: 'GET',
+      url: `/api/v1/scans/${scanId}/issues/${withShot}/screenshot`,
+    });
+    expect(res.statusCode).toBe(401);
+  });
+});

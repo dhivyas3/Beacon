@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Good form</title>
+    <meta name="description" content="A form that validates and submits." />
+    <link rel="canonical" href="{{ORIGIN}}/form-good" />
+    <meta property="og:title" content="Good form" />
+    <meta property="og:description" content="Form." />
+    <meta property="og:image" content="{{ORIGIN}}/images/ok.svg" />
+  </head>
+  <body>
+    <main>
+      <h1>Good form</h1>
+      <form id="enquiry" action="/api/forms/good" method="post">
+        <label>Name <input type="text" name="name" required /></label>
+        <label>Email <input type="email" name="email" required /></label>
+        <label>Message <textarea name="message"></textarea></label>
+        <button type="submit">Send</button>
+      </form>
+      <p id="status" role="status"></p>
+      <p><a href="/">Home</a></p>
+    </main>
+    <script>
+      var form = document.getElementById('enquiry');
+      form.addEventListener('submit', function (event) {
+        event.preventDefault();
+        fetch(form.action, { method: 'POST', body: new FormData(form) }).then(function (response) {
+          document.getElementById('status').textContent = response.ok
+            ? 'Thank you, your message has been sent.'
+            : 'Sorry, something went wrong.';
+        });
+      });
+    </script>
+  </body>
+</html>

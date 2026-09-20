@@ -83,6 +83,10 @@ services:
       context: .
       target: worker
     restart: unless-stopped
+    # Chromium needs more shared memory than Docker's 64 MB default, and a proper init process to
+    # reap the browser processes it starts.
+    shm_size: '1gb'
+    init: true
     environment: *app-env
     volumes:
       - storage:/data/storage

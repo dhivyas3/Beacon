@@ -2,7 +2,7 @@
 
 QA Hub validates live websites after launch. Submit a URL (from the dashboard, n8n, monday.com via n8n, or CI) and it assigns a scan ID, discovers every page, runs checks in the background, streams progress, and produces a report.
 
-> **Status: Phase 2 of 6 (API core).** The public API works end to end: sign in, API keys with scopes, allowed domains, scan creation with idempotency and duplicate protection, scan status and progress, pages, issues, cancel, settings, and an OpenAPI 3.1 document. Scans are accepted and queued but not yet executed. The scan engine arrives in Phase 3 and the dashboard in Phase 4. See [docs/PLAN.md](docs/PLAN.md). This README describes what exists today.
+> **Status: Phase 3 of 6 (scan engine).** Scans now run: the worker discovers pages, checks each one in a headless browser and verifies every link once. The `images`, `links`, `staging-urls` and `page-health` checks are live, with progress, cancellation, screenshots and an SSRF guard. The `forms` and `seo` checks arrive in Phase 5, the dashboard in Phase 4, callbacks and exports in Phase 6. See [docs/PLAN.md](docs/PLAN.md). This README describes what exists today.
 
 ## Quick start
 
@@ -32,6 +32,19 @@ pnpm dev                 # api :3000, worker, web :5173
 
 `pnpm dev:services` needs a `redis-server` binary. It looks for `REDIS_SERVER_BIN`, then `.tools/redis/`, then `PATH`.
 
+The worker drives Chromium. Install it once with `pnpm --filter @qa-hub/worker exec playwright install chromium` (the Docker image does this for you).
+
+### Try a scan on the fixture site
+
+The repo ships a small site with deliberate defects. It is the only thing you should scan while developing.
+
+```bash
+pnpm --filter @qa-hub/fixtures serve   # http://127.0.0.1:4010
+# In .env set ALLOW_LOCAL_TARGETS=true, allow 127.0.0.1 (step 2 of the API walkthrough), then start a scan of http://127.0.0.1:4010
+```
+
+See [fixtures/site/README.md](fixtures/site/README.md) for what is wrong with each page.
+
 ## Architecture
 
 ```mermaid
@@ -55,10 +68,12 @@ flowchart LR
 | Package | Purpose |
 | --- | --- |
 | `apps/api` | Public `/api/v1` API, sessions and API keys, OpenAPI at `/api/docs` |
-| `apps/worker` | BullMQ consumers, scan engine, stale-scan reaper |
+| `apps/worker` | Scan engine: discovery, browser pool, checks, link verification, progress, stale-scan reaper |
 | `apps/web` | React 19 dashboard |
 | `packages/shared` | Zod schemas (the API contract), progress and ETA maths, health score, URL utilities, env parsing |
-| `packages/net` | SSRF guard: rejects loopback, private, link-local and cloud metadata addresses |
+| `packages/net` | SSRF guard and the HTTP client for every user-supplied URL: DNS pinning, redirect re-checks, size and time limits |
+| `packages/storage` | Storage interface with a local disk implementation, used for screenshots |
+| `fixtures/site` | Deterministic site with known defects, used by tests and for manual trials |
 | `packages/db` | Prisma schema, migrations, client, admin seed |
 | `packages/testkit` | Embedded Postgres, Redis and per-test databases for the test suite |
 
@@ -127,6 +142,24 @@ Errors always have the shape `{ "error": { "code", "message", "details"? } }`:
 | 429 | `rate_limited` | Over the per-key limit. See the `Retry-After` header. |
 
 Every response carries an `X-Request-Id` header.
+
+## How a scan runs
+
+1. **Discovery.** Status `discovering`. Reads `robots.txt` and `sitemap.xml` (following indexes) and crawls from the homepage, up to `MAX_PAGES`. The page total is fixed when discovery ends.
+2. **Pages.** Status `running`. `PAGE_CONCURRENCY` pages at a time in Chromium. Each page is loaded, scrolled to the bottom to trigger lazy loading, then every enabled check runs. Findings are written as they are found, with a screenshot for each critical one.
+3. **Links.** Every unique link on the site is verified once (HEAD, then GET if the server refuses HEAD). A broken link becomes one finding per page that contains it.
+4. **Finalise.** Health score and per-check results, then `completed`.
+
+Cancelling a scan stops queued work and closes the browser within a page or two. At most `MAX_CONCURRENT_SCANS` scans run at once and the rest wait as `queued`. Each scan sends at most `SCAN_RATE_LIMIT_RPS` requests a second to the site and backs off on 429 and 503.
+
+| Check | Finds |
+| --- | --- |
+| `images` | Broken images (including lazy-loaded ones), broken `srcset` candidates and CSS backgrounds, missing `alt` |
+| `links` | Broken internal and external links, redirect chains of three or more hops |
+| `staging-urls` | Links, images, scripts, styles, canonicals and requests pointing at staging or development hosts |
+| `page-health` | Non-2xx pages, JavaScript errors, failed requests, mixed content |
+
+Screenshots are served at `GET /api/v1/scans/:id/issues/:issueId/screenshot`.
 
 ## Decisions and plan
 

@@ -97,3 +97,23 @@ describe('matchesStagingPattern', () => {
     expect(matchesStagingPattern('netlify.app.example.com', patterns)).toBe(false);
   });
 });
+
+describe('computeTemplates', () => {
+  it('groups pages that share a parent path with at least three siblings', async () => {
+    const { computeTemplates } = await import('./url.js');
+    const urls = [
+      'https://x.com/',
+      'https://x.com/about',
+      'https://x.com/properties/12-oak-lane',
+      'https://x.com/properties/3-elm-road',
+      'https://x.com/properties/9-pine-close',
+      'https://x.com/news/launch',
+      'https://x.com/news/awards',
+    ];
+    const templates = computeTemplates(urls);
+    expect(templates.get('https://x.com/')).toBeNull();
+    expect(templates.get('https://x.com/about')).toBeNull();
+    expect(templates.get('https://x.com/properties/3-elm-road')).toBe('/properties/:slug');
+    expect(templates.get('https://x.com/news/launch')).toBeNull();
+  });
+});

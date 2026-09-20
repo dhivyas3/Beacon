@@ -5,6 +5,7 @@ import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
 import type { Db } from '@qa-hub/db';
 import type { HostResolver } from '@qa-hub/net';
+import { LocalStorage, type Storage } from '@qa-hub/storage';
 import Fastify, { type FastifyInstance } from 'fastify';
 import {
   jsonSchemaTransform,
@@ -34,12 +35,15 @@ export interface ServerDeps {
   queue?: ScanQueue;
   /** Defaults to system DNS. Tests inject a fake so no real lookups happen. */
   resolver?: HostResolver;
+  /** Where screenshots live. Defaults to local disk at `config.STORAGE_DIR`. */
+  storage?: Storage;
 }
 
 export const API_PREFIX = '/api/v1';
 
 export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
   const { config, db, redis } = deps;
+  const storage = deps.storage ?? new LocalStorage(config.STORAGE_DIR);
   const app = Fastify({
     logger: {
       level: config.LOG_LEVEL,
@@ -146,7 +150,7 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
       await v1.register(apiKeyRoutes);
       await v1.register(allowedDomainRoutes);
       await v1.register(settingsRoutes);
-      await v1.register(scanRoutes, { queue, resolver: deps.resolver });
+      await v1.register(scanRoutes, { queue, resolver: deps.resolver, storage });
     },
     { prefix: API_PREFIX },
   );

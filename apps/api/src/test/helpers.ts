@@ -1,4 +1,8 @@
+import { mkdtemp, rm } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import { createDb, type Db } from '@qa-hub/db';
+import { LocalStorage } from '@qa-hub/storage';
 import type { HostResolver } from '@qa-hub/net';
 import { API_KEY_PREFIX, newId, type Scope } from '@qa-hub/shared';
 import {
@@ -28,6 +32,7 @@ export interface TestApp {
   config: ApiConfig;
   redisUrl: string;
   queuePrefix: string;
+  storage: LocalStorage;
   close(): Promise<void>;
   createUser(input?: {
     email?: string;
@@ -47,12 +52,15 @@ export async function createTestApp(overrides: Record<string, string> = {}): Pro
   const database: TestDatabase = await createIsolatedDatabase();
   const queuePrefix = uniquePrefix('api');
   const redisUrl = testRedisUrl();
+  const storageDir = await mkdtemp(join(tmpdir(), 'qa-hub-api-'));
+  const storage = new LocalStorage(storageDir);
   const config = ApiEnvSchema.parse({
     NODE_ENV: 'test',
     LOG_LEVEL: 'silent',
     DATABASE_URL: database.url,
     REDIS_URL: redisUrl,
     QUEUE_PREFIX: queuePrefix,
+    STORAGE_DIR: storageDir,
     WEBHOOK_SIGNING_SECRET: 'test-signing-secret-0123456789',
     PUBLIC_URL: 'http://qa.test',
     ...overrides,
@@ -60,7 +68,7 @@ export async function createTestApp(overrides: Record<string, string> = {}): Pro
   const db = createDb({ url: database.url, log: false });
   const redis = new Redis(redisUrl, { maxRetriesPerRequest: 1 });
   const queue = new BullScanQueue(redisUrl, queuePrefix);
-  const app = await buildServer({ config, db, redis, queue, resolver: fakeResolver });
+  const app = await buildServer({ config, db, redis, queue, resolver: fakeResolver, storage });
   await app.ready();
 
   let userCounter = 0;
@@ -71,12 +79,14 @@ export async function createTestApp(overrides: Record<string, string> = {}): Pro
     config,
     redisUrl,
     queuePrefix,
+    storage,
     async close() {
       await app.close();
       await queue.close();
       redis.disconnect();
       await db.$disconnect();
       await database.drop();
+      await rm(storageDir, { recursive: true, force: true });
     },
     async createUser(input = {}) {
       userCounter += 1;

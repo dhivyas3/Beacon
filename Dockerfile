@@ -33,6 +33,9 @@ CMD ["sh", "-c", "pnpm --filter @qa-hub/db migrate && node apps/api/dist/main.js
 # ---- worker ---------------------------------------------------------------------------------
 FROM build AS worker
 ENV NODE_ENV=production
+# Headless Chromium and the system libraries it needs. Cached as its own layer.
+RUN pnpm --filter @qa-hub/worker exec playwright install --with-deps --only-shell chromium \
+  && rm -rf /var/lib/apt/lists/*
 CMD ["node", "apps/worker/dist/main.js"]
 
 # ---- web: static files served by nginx, /api proxied to the api service ---------------------

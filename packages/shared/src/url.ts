@@ -144,3 +144,45 @@ export function matchesStagingPattern(hostname: string, patterns: readonly strin
     return host === pattern || host.endsWith(`.${pattern}`);
   });
 }
+
+/**
+ * Groups structurally similar pages so a report can say "all 200 property pages have this issue".
+ *
+ * A page belongs to a template when at least three pages share its parent path and differ only in
+ * the last segment: `/properties/12-oak-lane` becomes `/properties/:slug`. Everything else is null.
+ * Returns a map from each input URL to its template.
+ */
+export function computeTemplates(urls: readonly string[]): Map<string, string | null> {
+  const parts = new Map<string, { parent: string; leaf: string } | null>();
+  const leavesByParent = new Map<string, Set<string>>();
+
+  for (const url of urls) {
+    let segments: string[];
+    try {
+      segments = new URL(url).pathname.split('/').filter((segment) => segment !== '');
+    } catch {
+      parts.set(url, null);
+      continue;
+    }
+    if (segments.length < 2) {
+      parts.set(url, null);
+      continue;
+    }
+    const leaf = segments[segments.length - 1] ?? '';
+    const parent = `/${segments.slice(0, -1).join('/')}`;
+    parts.set(url, { parent, leaf });
+    const leaves = leavesByParent.get(parent) ?? new Set<string>();
+    leaves.add(leaf);
+    leavesByParent.set(parent, leaves);
+  }
+
+  const result = new Map<string, string | null>();
+  for (const url of urls) {
+    const entry = parts.get(url);
+    result.set(
+      url,
+      entry && (leavesByParent.get(entry.parent)?.size ?? 0) >= 3 ? `${entry.parent}/:slug` : null,
+    );
+  }
+  return result;
+}

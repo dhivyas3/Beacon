@@ -1,0 +1,20 @@
+{
+  "name": "@qa-hub/fixtures",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./server.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "serve": "tsx serve.ts",
+    "test": "vitest run --passWithNoTests"
+  },
+  "devDependencies": {
+    "@types/node": "^22.20.4",
+    "tsx": "^4.23.15",
+    "typescript": "~5.9.3",
+    "vitest": "^3.2.7"
+  }
+}

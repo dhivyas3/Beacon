@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url><loc>{{ORIGIN}}/</loc></url>
+  <url><loc>{{ORIGIN}}/about</loc></url>
+  <url><loc>{{ORIGIN}}/products/1</loc></url>
+  <url><loc>{{ORIGIN}}/products/2</loc></url>
+  <url><loc>{{ORIGIN}}/products/3</loc></url>
+  <url><loc>{{ORIGIN}}/contact</loc></url>
+  <url><loc>{{ORIGIN}}/form-good</loc></url>
+  <url><loc>{{ORIGIN}}/form-broken</loc></url>
+  <url><loc>{{ORIGIN}}/form-500</loc></url>
+  <url><loc>{{ORIGIN}}/console-errors</loc></url>
+  <url><loc>{{ORIGIN}}/no-meta</loc></url>
+  <url><loc>{{ORIGIN}}/sitemap-only</loc></url>
+</urlset>

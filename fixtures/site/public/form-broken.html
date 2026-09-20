@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Form without validation</title>
+    <meta name="description" content="A form whose validation is broken." />
+    <link rel="canonical" href="{{ORIGIN}}/form-broken" />
+    <meta property="og:title" content="Broken form" />
+    <meta property="og:description" content="Form." />
+    <meta property="og:image" content="{{ORIGIN}}/images/ok.svg" />
+  </head>
+  <body>
+    <main>
+      <h1>Form without validation</h1>
+      <form id="signup" action="/api/forms/broken" method="post" novalidate>
+        <label>Email <input type="text" name="email" /></label>
+        <button type="submit">Subscribe</button>
+      </form>
+      <p><a href="/">Home</a></p>
+    </main>
+    <script>
+      // Broken on purpose: no validation, and it submits whatever it is given.
+      var form = document.getElementById('signup');
+      form.addEventListener('submit', function (event) {
+        event.preventDefault();
+        fetch(form.action, { method: 'POST', body: new FormData(form) });
+      });
+    </script>
+  </body>
+</html>

@@ -31,6 +31,7 @@ pnpm dev:services            # embedded Postgres (5432) + Redis (6379) without D
 pnpm db:migrate              # prisma migrate deploy
 pnpm db:migrate:dev --name x # create a new migration (needs a running Postgres)
 pnpm db:seed                 # create the first admin from SEED_ADMIN_* env vars
+pnpm --filter @qa-hub/fixtures serve   # run the fixture site by hand on :4010
 docker compose up --build    # full system: postgres, redis, api, worker, web (http://localhost:8080)
 ```
 
@@ -57,10 +58,13 @@ local `redis-server` (from `PATH` or `REDIS_SERVER_BIN`) are started on random p
   Microcopy in sentence case, verb-first buttons. Every async view has skeleton, empty and
   error states.
 - Commit messages follow Conventional Commits (`feat(api): ...`, `fix(worker): ...`).
-- Never scan a real third-party site in development or tests; use `fixtures/site`.
+- Never scan a real third-party site in development or tests; use `fixtures/site`. Worker tests keep DNS and Chromium offline with `offlineResolver` and `OFFLINE_BROWSER_ARGS` from `apps/worker/src/test/harness.ts`.
+- A check is one file in `apps/worker/src/checks/` exporting a `Check` (`run` per page, optional `finalize` once per scan), registered in `checks/index.ts`. Keep the analysis in pure functions so it can be unit tested without a browser.
+- Code that runs inside the browser page (`scan/snapshot-script.ts`) is a plain JavaScript string. Never pass a TypeScript function to `page.evaluate`: bundlers inject helpers that do not exist in the page.
+- Everything the worker does to a scan row must be conditional on the status (`updateMany` with a `where` on status), so a scan cancelled or failed elsewhere is never overwritten.
 
 ## Windows dev notes
 
 This repo was bootstrapped on Windows without Docker. `pnpm dev:services` and the test kit
 use `embedded-postgres` and `redis-server` from `REDIS_SERVER_BIN` (see `.env.example`).
-Playwright needs `pnpm exec playwright install chromium` once.
+Playwright needs `pnpm --filter @qa-hub/worker exec playwright install chromium` once.

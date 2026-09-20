@@ -145,3 +145,55 @@ Values saved through `PATCH /settings` override environment defaults. A default 
 ## 2026-09-20 Deferred to later phases
 
 The issue screenshot endpoint arrives with the storage package in Phase 3, when screenshots first exist. The `scan.cancelled` callback is sent from the cancel route in Phase 6 together with the other callbacks.
+
+## 2026-09-20 Discovery: sitemap plus HTTP crawl, robots.txt informs but does not block
+
+Pages come from `sitemap.xml` (following sitemap indexes to three levels and 50 files) and from a breadth-first crawl of every discovered page, all on the start URL's origin after redirects. The crawl reads raw HTML, so links that only exist after JavaScript runs are not found. Pages are never added after discovery, which keeps the page total fixed and progress monotonic. `robots.txt` is read for sitemap locations and a blanket `Disallow: /`, but its rules are not enforced: a scan is run by the site's owner, and the allowed domains list is the authorisation. URLs with more than three query parameters are skipped so faceted navigation cannot explode the page count, and `MAX_PAGES` caps the rest.
+
+## 2026-09-20 The redirect target of the start URL must also be allowed
+
+`http://example.com` may redirect to `https://www.example.com`. The scan continues on the final origin, but only if that hostname is also on the allowed list. Otherwise it fails with a message that names the host.
+
+## 2026-09-20 Pages that redirect elsewhere are not checked twice
+
+A page such as `/old-page` that redirects to `/about` is recorded and counted, but its checks are skipped, because they would only repeat the findings of the page it points at. The redirect itself is judged by the link check (three or more hops is a warning).
+
+## 2026-09-20 Severity choices
+
+- Broken image, broken `srcset` candidate, broken CSS background, staging URL, missing script or stylesheet, and a page that returns 4xx/5xx or will not load: critical.
+- Missing alt text, console errors, uncaught exceptions, other failed requests, redirect chains of three or more hops, pages missing from the sitemap: warning.
+- Passive mixed content (images over HTTP) is a warning, active mixed content is critical.
+- A request the SSRF guard blocked inside the browser is info.
+- On external sites, 401, 403, 429 and 999 are warnings ("could not be verified") because sites routinely refuse bots. Internal links get no such leniency.
+
+## 2026-09-20 Link verification
+
+HEAD first, GET when the server answers 403, 405 or 501. A GET reads only the first bytes. 429 and 503 trigger up to three retries that honour `Retry-After` (capped at 15 seconds) and slow the scan's request rate for 30 seconds. One retry for timeouts and refused connections. External hosts are throttled per host and use a lower concurrency. Internal links are always requested rather than trusting the page crawl, because the crawl follows redirects and would hide redirect chains.
+
+## 2026-09-20 The browser is guarded, but cannot pin DNS
+
+Every request Chromium makes, including subresources and redirects, goes through a route handler that resolves the host and refuses private, loopback, link-local and metadata addresses. Decisions are cached per origin. Chromium does its own DNS, so unlike the HTTP client it cannot be pinned to the validated address: a hostname that changes its DNS answer between the check and the connection could reach a private address. Run the worker on a network that cannot reach internal services for defence in depth.
+
+## 2026-09-20 Screenshots
+
+A critical issue found while a page is loaded gets a PNG with the element outlined in red, at most five per page. Critical issues without an element share one plain screenshot of the page. Warnings, and everything reported after the pages are closed (broken links), have none.
+
+## 2026-09-20 Fingerprints and grouping
+
+`fingerprint = sha256(checkType, rule, subject)` truncated to 16 hex characters. The subject is the resource URL by default (a broken image, link or staging URL), a normalised message for console errors, and empty for page-level rules. The same problem on the same page is stored once.
+
+## 2026-09-20 Check results
+
+`pagesChecked` is the number of pages processed. `issuesFound` counts open critical and warning issues of that check. A result is written for every check that ran, and also for any check type that reported findings from discovery, so `seo` appears once it reports a missing sitemap even before the full SEO check exists (Phase 5). Checks in the request that are not implemented yet (`forms`, `seo`) are skipped and logged.
+
+## 2026-09-20 Worker shutdown fails running scans
+
+On SIGTERM the worker aborts every running scan and marks it failed with "The worker restarted while this scan was running. Start it again." A scan whose worker is killed outright is failed by the reaper after two minutes. BullMQ does not retry stalled scan jobs.
+
+## 2026-09-20 Tolerant link extraction instead of an HTML parser
+
+Discovery pulls `<a href>` values with a regular expression after removing scripts, styles and comments. Strict parsers dropped a link nested inside an unclosed anchor, which real sites contain.
+
+## 2026-09-20 Identifiable user agent everywhere
+
+All HTTP requests send `QAHubBot/1.0 (website QA scan)`. Chromium keeps its normal user agent string and appends `QAHubBot/1.0`, so sites that sniff for browser features still work.

@@ -76,6 +76,8 @@ export const ID_PREFIXES = {
   issue: 'iss',
   checkResult: 'chk',
   webhookDelivery: 'whd',
+  link: 'lnk',
+  linkSource: 'lns',
 } as const;
 export type IdPrefix = (typeof ID_PREFIXES)[keyof typeof ID_PREFIXES];
 
@@ -102,7 +104,7 @@ export const TRACKING_PARAMS = [
   '_gl',
 ] as const;
 
-export const USER_AGENT = 'QAHubBot/1.0 (+https://github.com/qa-hub; website validation)';
+export const USER_AGENT = 'QAHubBot/1.0 (website QA scan)';
 
 export const PROGRESS_WEIGHTS = {
   discoveryEnd: 5,

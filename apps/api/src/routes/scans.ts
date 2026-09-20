@@ -18,7 +18,7 @@ import {
 import type { Prisma } from '@qa-hub/db';
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
-import { ApiError } from '../lib/errors.js';
+import { ApiError, notFound } from '../lib/errors.js';
 import { errorResponses } from '../lib/openapi.js';
 import { paginateById } from '../lib/pagination.js';
 import { listGroupedIssues, listIssues, updateIssue } from '../services/issues.js';
@@ -26,10 +26,12 @@ import { statusUrlOf, reportUrlOf } from '../services/scan-view.js';
 import { ScanService } from '../services/scans.js';
 import type { ScanQueue } from '../queue.js';
 import type { HostResolver } from '@qa-hub/net';
+import { InvalidStorageKeyError, type Storage } from '@qa-hub/storage';
 
 export interface ScanRouteOptions {
   queue: ScanQueue;
   resolver: HostResolver | undefined;
+  storage: Storage;
 }
 
 const IssueParamsSchema = z.object({
@@ -225,6 +227,48 @@ export const scanRoutes: FastifyPluginAsyncZod<ScanRouteOptions> = async (app, o
     async (request) => {
       await scans.getRow(request.params.id);
       return updateIssue(app.db, view, request.params.id, request.params.issueId, request.body);
+    },
+  );
+
+  app.get(
+    '/scans/:id/issues/:issueId/screenshot',
+    {
+      config: { auth: 'scans:read' },
+      schema: {
+        tags: ['Issues'],
+        summary: 'Screenshot of an issue',
+        description:
+          'A PNG of the page with the offending element outlined in red. Only critical issues found while checking a page have one, see `screenshotUrl` on the issue. Works with a session cookie, so it can be used directly as an image source in the dashboard.',
+        produces: ['image/png'],
+        params: IssueParamsSchema,
+        response: {
+          200: z.string().meta({ format: 'binary' }),
+          ...errorResponses(401, 403, 404, 429),
+        },
+      },
+    },
+    async (request, reply) => {
+      const issue = await app.db.scanIssue.findFirst({
+        where: { id: request.params.issueId, scanId: request.params.id },
+        select: { screenshotPath: true },
+      });
+      if (!issue) throw notFound('Issue', request.params.issueId);
+      const stored = issue.screenshotPath
+        ? await options.storage.get(issue.screenshotPath).catch((error: unknown) => {
+            if (error instanceof InvalidStorageKeyError) return null;
+            throw error;
+          })
+        : null;
+      if (!stored) {
+        throw new ApiError('not_found', 'This issue has no screenshot.');
+      }
+      return (
+        reply
+          .header('content-type', stored.contentType)
+          .header('cache-control', 'private, max-age=86400, immutable')
+          // The response schema describes a binary body for OpenAPI. Fastify sends a Buffer as is.
+          .send(stored.data as never)
+      );
     },
   );
 };
