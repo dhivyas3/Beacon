@@ -77,3 +77,5 @@ local `redis-server` (from `PATH` or `REDIS_SERVER_BIN`) are started on random p
 This repo was bootstrapped on Windows without Docker. `pnpm dev:services` and the test kit
 use `embedded-postgres` and `redis-server` from `REDIS_SERVER_BIN` (see `.env.example`).
 Playwright needs `pnpm --filter @qa-hub/worker exec playwright install chromium` once.
+
+On Windows a running api or worker holds the Prisma query engine open, so `prisma generate` (part of `pnpm build` and `pnpm dev`) fails with `EPERM: operation not permitted, rename ...query_engine`. Stop the running api and worker, then rebuild.

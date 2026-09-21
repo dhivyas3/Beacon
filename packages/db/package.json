@@ -16,9 +16,9 @@
     "build": "prisma generate && tsc -p tsconfig.build.json",
     "typecheck": "prisma generate && tsc --noEmit",
     "test": "vitest run --passWithNoTests",
-    "migrate": "prisma migrate deploy",
-    "migrate:dev": "prisma migrate dev",
-    "seed": "tsx src/seed.ts"
+    "migrate": "node scripts/with-env.mjs prisma migrate deploy",
+    "migrate:dev": "node scripts/with-env.mjs prisma migrate dev",
+    "seed": "node scripts/with-env.mjs tsx src/seed.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",

@@ -30,6 +30,8 @@ pnpm db:seed
 pnpm dev                 # api :3000, worker, web :5173
 ```
 
+Edit `.env` after copying it: set `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/qahub` and `REDIS_URL=redis://127.0.0.1:6379` (the values `pnpm dev:services` prints), `PUBLIC_URL=http://localhost:5173`, and a `SEED_ADMIN_PASSWORD` of your own. `pnpm db:migrate` and `pnpm db:seed` read the root `.env` themselves.
+
 `pnpm dev:services` needs a `redis-server` binary. It looks for `REDIS_SERVER_BIN`, then `.tools/redis/`, then `PATH`.
 
 The worker drives Chromium. Install it once with `pnpm --filter @qa-hub/worker exec playwright install chromium` (the Docker image does this for you).
