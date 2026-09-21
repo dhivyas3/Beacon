@@ -100,7 +100,7 @@ function UserMenu() {
 
 const navLink = ({ isActive }: { isActive: boolean }) =>
   cn(
-    'rounded-md px-3 py-1.5 text-sm font-medium transition-colors duration-150',
+    'shrink-0 rounded-md px-3 py-1.5 text-sm font-medium transition-colors duration-150',
     isActive ? 'bg-surface-2 text-fg' : 'text-muted hover:text-fg',
   );
 
@@ -123,17 +123,23 @@ export function AppShell() {
             onClick={() => void client.invalidateQueries({ queryKey: ['scans'] })}
           >
             <Logo />
-            Beacon
+            <span className="sr-only sm:not-sr-only">Beacon</span>
           </NavLink>
-          <nav className="flex items-center gap-1" aria-label="Main">
+          <nav className="scroll-x flex min-w-0 items-center gap-1" aria-label="Main">
             <NavLink to="/" end className={navLink}>
+              Overview
+            </NavLink>
+            <NavLink to="/websites" className={navLink}>
+              Websites
+            </NavLink>
+            <NavLink to="/scans" end className={navLink}>
               Scans
             </NavLink>
             <NavLink to="/settings" className={navLink}>
               Settings
             </NavLink>
           </nav>
-          <div className="ml-auto flex items-center gap-1.5">
+          <div className="ml-auto flex shrink-0 items-center gap-1.5">
             <ThemeToggle />
             <UserMenu />
           </div>

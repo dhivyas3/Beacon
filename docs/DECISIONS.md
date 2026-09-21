@@ -369,3 +369,27 @@ On Windows the embedded server took its encoding from the system code page (WIN1
 ## 2026-09-22 Cancelling announces itself
 
 Cancelling happens in the API, which has no way to send a callback, so it puts the same `finished-<scanId>` announcement on the notifications queue. It is best effort: a cancellation that already happened is never undone because Redis was busy.
+
+## 2026-09-23 The live event stream reads the database once a second
+
+`GET /scans/:id/events` is a server-sent event stream. The worker and the API are separate processes with no shared channel for progress, and the scan row is already the source of truth, so the stream looks at the row once a second and sends what changed, the same numbers polling would have fetched. That keeps it simple and correct after any restart, at the price of one small query pair a second per open report. It sends `progress` when progress or the summary changes, `issue` for issues found after the connection opened (the page loads earlier ones itself, so nothing is replayed), and `done` with the final state, then closes. A comment line every 15 seconds keeps proxies from timing it out, and a stream ends after an hour so nothing lives forever: the browser reconnects and is told the current state straight away. Not-found and authentication failures are answered as ordinary JSON before the connection becomes a stream, because an error envelope cannot be sent once it has started. The route hijacks the reply, so it skips the response schema; the OpenAPI entry says what the events are.
+
+## 2026-09-23 Only the open report streams; cards and lists poll
+
+Browsers allow about six HTTP/1.1 connections to one origin. An overview with a handful of live checks, each holding a stream, would use them all and freeze the app. So one stream is opened for the report that is on screen, and website cards, the website page and lists keep polling every one to two seconds while something runs (and not at all when idle, as before). While a stream is connected the report's own polling slows to every ten seconds as a safety net. If the stream cannot open or drops, polling goes back to every second, so a proxy that buffers or blocks event streams costs latency and nothing else. `EventSource` reconnects by itself, and the hook only records whether it is connected.
+
+## 2026-09-23 The overview is the home page, and scans moved to /scans
+
+The overview of websites is what most people came for now, so it is `/`, and the table of every scan (with the box to start a one-off scan) is `/scans`. Report links are `/scans/:id` and stay as they are, because they are already in sent emails and callbacks. Websites are `/websites`, `/websites/new`, `/websites/:id` and `/websites/:id/edit`. The overview puts what needs attention first (poor score, then fair, then good, with never-checked and paused last) rather than alphabetically, so the site that is in trouble is the first card. "Needs attention" means a poor score or any critical issue in the latest check.
+
+## 2026-09-23 The website form
+
+The schedule is entered in UTC, which is how it is stored and run, with the viewer's own time shown beside it ("06:00 UTC, which is 07:00 BST for you") and the next planned check in local time, so nobody has to do the sum. Pages to pin or list are one per line, and a path such as `/contact` is taken to be on the website itself. Recipients are entered on the add form and managed on the website page afterwards, where every change (add, pause, choose what they receive, remove) is saved at once, so there are not two places that edit the same list. `Submit test data` is shown to everyone but disabled without the `forms:submit` permission, with the reason, rather than hidden. Server refusals are put next to the field they are about: a domain that is not allowed or a hostname already registered under the address, and the per-field problems of a bad combination under their fields.
+
+## 2026-09-23 Exports: the CSV has everything, the PDF is a summary
+
+The CSV has one row per issue occurrence, open and ignored, most severe first, with a byte order mark so Excel reads it as UTF-8. A cell that would run as a spreadsheet formula (it starts with `=`, `+`, `-`, `@` or a tab) is prefixed with an apostrophe, because the messages and URLs come from scanned sites. The PDF is built on the server with pdfkit and lists the score, the counts and up to 100 open problems, one per issue however many pages it is on, each with up to three example pages. The built-in PDF fonts cover Latin-1 and common punctuation, so anything else, an emoji in a page title for instance, is printed as `?` rather than as garbage. Bundling a Unicode font would fix that at the cost of about half a megabyte and a licence to track; it can be added if a customer needs it.
+
+## 2026-09-23 "Fixed since the last check" has one definition
+
+The count on the report and the list under it come from the same query, so they cannot disagree: problems the previous check of the same website had that this scan does not have. For a scan of a sample only pages checked both times count, because a page that was not looked at again is unseen, not fixed, and the report says so.

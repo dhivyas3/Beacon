@@ -4,7 +4,7 @@ import {
   findPreviousScan,
   isUniqueViolation,
   previousDurationMs,
-  Prisma,
+  type Prisma,
   type Db,
 } from '@beacon/db';
 import {
@@ -27,6 +27,7 @@ import { ApiError, notFound } from '../lib/errors.js';
 import { paginateById } from '../lib/pagination.js';
 import type { ScanQueue } from '../queue.js';
 import type { Actor } from '../types.js';
+import { listFixedIssues } from './issues.js';
 import { queuePositions, scanInclude, toScanDto, type ScanRow } from './scan-view.js';
 import { loadSettings } from './settings.js';
 
@@ -293,28 +294,10 @@ export class ScanService {
       this.previousCompleted(row),
     ]);
 
-    let fixedIssueCount = 0;
-    if (previous && row.status === 'completed') {
-      // A scan of a sample only re-checks some pages. An issue on a page that was not looked at
-      // again is not fixed, just unseen, so only pages present in both scans (and site-wide issues)
-      // can be counted as fixed.
-      const onlyRechecked =
-        row.pageSelectionMode === 'full'
-          ? Prisma.empty
-          : Prisma.sql`AND (i."pageId" IS NULL OR pp."url" IN (SELECT "url" FROM "ScanPage" WHERE "scanId" = ${id}))`;
-      const rowsFixed = await db.$queryRaw<{ count: number }[]>(Prisma.sql`
-        SELECT COUNT(*)::int AS count
-        FROM (
-          SELECT DISTINCT i."fingerprint"
-          FROM "ScanIssue" i
-          LEFT JOIN "ScanPage" pp ON pp."id" = i."pageId"
-          WHERE i."scanId" = ${previous.id} ${onlyRechecked}
-        ) p
-        WHERE NOT EXISTS (
-          SELECT 1 FROM "ScanIssue" c WHERE c."scanId" = ${id} AND c."fingerprint" = p."fingerprint"
-        )`);
-      fixedIssueCount = rowsFixed[0]?.count ?? 0;
-    }
+    const fixedIssueCount =
+      previous && row.status === 'completed'
+        ? (await listFixedIssues(db, row, previous.id)).length
+        : 0;
 
     const scoreChange =
       previous?.healthScore != null && row.healthScore != null

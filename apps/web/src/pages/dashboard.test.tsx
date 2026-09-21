@@ -64,7 +64,7 @@ describe('dashboard scan list', () => {
         }),
       ]),
     );
-    renderApp('/');
+    renderApp('/scans');
 
     const running = within(await waitFor(() => rowFor('shop.example.com')));
     expect(running.getByText('Running')).toBeInTheDocument();
@@ -104,7 +104,7 @@ describe('dashboard scan list', () => {
       }),
     });
     const user = userEvent.setup();
-    renderApp('/');
+    renderApp('/scans');
     const row = await waitFor(() => rowFor('www.example.com'));
     await user.click(within(row).getByText('n8n production'));
     await waitFor(() => expect(location()).toBe('/scans/scn_abc'));
@@ -129,7 +129,7 @@ describe('dashboard scan list', () => {
           }),
         ]),
     });
-    renderApp('/');
+    renderApp('/scans');
     expect(await screen.findByText('20%')).toBeInTheDocument();
     percent = 55;
     await vi.advanceTimersByTimeAsync(2200);
@@ -138,7 +138,7 @@ describe('dashboard scan list', () => {
 
   it('shows a skeleton while loading', () => {
     fakeApi({ ...routes(), 'GET /scans': () => new Promise(() => undefined) });
-    renderApp('/');
+    renderApp('/scans');
     return screen.findByLabelText('Loading scans').then((skeleton) => {
       expect(skeleton).toHaveAttribute('aria-busy', 'true');
     });
@@ -147,7 +147,7 @@ describe('dashboard scan list', () => {
   it('invites the first scan when there are none', async () => {
     fakeApi(routes([]));
     const user = userEvent.setup();
-    renderApp('/');
+    renderApp('/scans');
     expect(await screen.findByText('Run your first scan')).toBeInTheDocument();
     await user.click(screen.getByRole('button', { name: 'Enter a site address' }));
     expect(screen.getByLabelText('Site address')).toHaveFocus();
@@ -163,7 +163,7 @@ describe('dashboard scan list', () => {
           : pageOf([scan()]),
     });
     const user = userEvent.setup();
-    renderApp('/');
+    renderApp('/scans');
     expect(await screen.findByRole('alert')).toHaveTextContent('Could not load scans');
     expect(screen.getByRole('alert')).toHaveTextContent('The server had a problem.');
     fail = false;
@@ -176,7 +176,7 @@ describe('dashboard scan list', () => {
       routes([scan({ hostname: 'a.example.com' }), scan({ hostname: 'b.example.com' })]),
     );
     const user = userEvent.setup();
-    renderApp('/');
+    renderApp('/scans');
     await screen.findByRole('link', { name: 'a.example.com' });
 
     await user.selectOptions(screen.getByLabelText('Filter by status'), 'running');
@@ -207,7 +207,7 @@ describe('dashboard scan list', () => {
       'GET /scans': (request) => pageOf(request.query.get('status') ? [] : [scan()]),
     });
     const user = userEvent.setup();
-    renderApp('/');
+    renderApp('/scans');
     await screen.findByRole('link', { name: 'www.example.com' });
     await user.selectOptions(screen.getByLabelText('Filter by status'), 'failed');
     expect(await screen.findByText('No scans match these filters')).toBeInTheDocument();
@@ -222,7 +222,7 @@ describe('dashboard scan list', () => {
           : pageOf([scan({ hostname: 'newer.example.com' })], 'next'),
     });
     const user = userEvent.setup();
-    renderApp('/');
+    renderApp('/scans');
     await screen.findByRole('link', { name: 'newer.example.com' });
     await user.click(screen.getByRole('button', { name: 'Load more scans' }));
     await screen.findByRole('link', { name: 'older.example.com' });
@@ -237,7 +237,7 @@ describe('starting a scan', () => {
   it('checks the address before sending anything', async () => {
     const api = fakeApi(routes());
     const user = userEvent.setup();
-    renderApp('/');
+    renderApp('/scans');
     await user.type(await screen.findByLabelText('Site address'), 'not a url');
     await user.click(screen.getByRole('button', { name: /new scan/i }));
     expect(await screen.findByRole('alert')).toHaveTextContent('Enter a full site address');
@@ -261,7 +261,7 @@ describe('starting a scan', () => {
       }),
     });
     const user = userEvent.setup();
-    renderApp('/');
+    renderApp('/scans');
     await user.type(await screen.findByLabelText('Site address'), 'www.example.com');
     await waitFor(() => expect(screen.getByRole('button', { name: 'Scan options' })).toBeEnabled());
     await user.click(screen.getByRole('button', { name: /new scan/i }));
@@ -289,7 +289,7 @@ describe('starting a scan', () => {
       }),
     });
     const user = userEvent.setup();
-    renderApp('/');
+    renderApp('/scans');
     await user.type(await screen.findByLabelText('Site address'), 'https://www.example.com');
     await user.click(screen.getByRole('button', { name: 'Scan options' }));
 
@@ -316,7 +316,7 @@ describe('starting a scan', () => {
   it('refuses to start with no checks selected', async () => {
     const api = fakeApi(routes());
     const user = userEvent.setup();
-    renderApp('/');
+    renderApp('/scans');
     await user.type(await screen.findByLabelText('Site address'), 'https://www.example.com');
     await user.click(screen.getByRole('button', { name: 'Scan options' }));
     for (const name of ['Images', 'Links', 'Staging URLs', 'Page health']) {
@@ -339,7 +339,7 @@ describe('starting a scan', () => {
         ),
     });
     const user = userEvent.setup();
-    renderApp('/');
+    renderApp('/scans');
     await user.type(await screen.findByLabelText('Site address'), 'https://evil.test');
     await user.click(screen.getByRole('button', { name: /new scan/i }));
     expect(await screen.findByRole('alert')).toHaveTextContent(
@@ -361,7 +361,7 @@ describe('starting a scan', () => {
         ),
     });
     const user = userEvent.setup();
-    renderApp('/');
+    renderApp('/scans');
     await user.type(await screen.findByLabelText('Site address'), 'https://www.example.com');
     await user.click(screen.getByRole('button', { name: /new scan/i }));
     const link = await screen.findByRole('link', { name: 'View that scan' });

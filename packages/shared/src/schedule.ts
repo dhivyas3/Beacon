@@ -64,7 +64,15 @@ export function computeNextCheckAt(schedule: Schedule, from: Date): Date | null 
   }
 }
 
-const WEEKDAYS = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
+export const WEEKDAYS = [
+  'Sunday',
+  'Monday',
+  'Tuesday',
+  'Wednesday',
+  'Thursday',
+  'Friday',
+  'Saturday',
+];
 
 function ordinal(n: number): string {
   const mod100 = n % 100;

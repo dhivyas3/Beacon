@@ -1,5 +1,5 @@
 import type { Scan } from '@beacon/shared';
-import { KeyRound, User } from 'lucide-react';
+import { CalendarClock, KeyRound, User, Workflow } from 'lucide-react';
 import { Link, useNavigate } from 'react-router';
 import { HealthScorePill } from '@/components/health-score';
 import { ScanProgress } from '@/components/scan-progress';
@@ -7,6 +7,7 @@ import { StatusBadge } from '@/components/status-badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatNumber, pathOf, relativeTime } from '@/lib/format';
 import { cn } from '@/lib/cn';
+import { TRIGGER_LABELS } from '@/lib/website';
 
 const HEAD = 'px-3 py-2.5 text-left text-xs font-medium uppercase tracking-wide text-subtle';
 const CELL = 'px-3 py-3 align-middle';
@@ -26,7 +27,18 @@ function Count({ value, tone }: { value: number; tone: 'critical' | 'warning' })
 }
 
 function TriggeredBy({ scan }: { scan: Scan }) {
-  if (!scan.triggeredBy) return <span className="text-subtle">—</span>;
+  if (!scan.triggeredBy) {
+    if (scan.triggeredByType === 'manual_ui' || scan.triggeredByType === 'manual_api') {
+      return <span className="text-subtle">—</span>;
+    }
+    const Icon = scan.triggeredByType === 'scheduled' ? CalendarClock : Workflow;
+    return (
+      <span className="inline-flex items-center gap-1.5 text-muted">
+        <Icon className="size-3.5 shrink-0" aria-hidden />
+        {TRIGGER_LABELS[scan.triggeredByType]}
+      </span>
+    );
+  }
   const Icon = scan.triggeredBy.type === 'api_key' ? KeyRound : User;
   return (
     <span className="inline-flex max-w-[140px] items-center gap-1.5 text-muted">

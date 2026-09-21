@@ -1,6 +1,7 @@
 import type {
   ApiKey,
   AllowedDomain,
+  EmailDelivery,
   GroupedIssue,
   Issue,
   Page,
@@ -10,6 +11,9 @@ import type {
   ScanPage,
   SessionResponse,
   Settings,
+  Website,
+  WebsiteHistoryItem,
+  WebsiteRecipient,
 } from '@beacon/shared';
 
 export function progress(overrides: Partial<Progress> = {}): Progress {
@@ -188,6 +192,96 @@ export function domain(overrides: Partial<AllowedDomain> = {}): AllowedDomain {
     note: 'Client site',
     createdAt: '2026-09-01T09:00:00.000Z',
     createdByName: 'Dana',
+    ...overrides,
+  };
+}
+
+export function recipient(overrides: Partial<WebsiteRecipient> = {}): WebsiteRecipient {
+  const id = overrides.id ?? nextId('rcp');
+  return {
+    id,
+    email: 'owner@example-estates.co.uk',
+    name: 'Sam Owner',
+    isActive: true,
+    notify: 'every_check',
+    createdAt: '2026-08-01T09:00:00.000Z',
+    ...overrides,
+  };
+}
+
+export function website(overrides: Partial<Website> = {}): Website {
+  const id = overrides.id ?? nextId('web');
+  return {
+    id,
+    name: 'Example Estates',
+    url: 'https://www.example-estates.co.uk/',
+    hostname: 'www.example-estates.co.uk',
+    owner: { id: 'usr_000000000001', name: 'Dana' },
+    checkFrequency: 'monthly',
+    scheduleDayOfWeek: null,
+    scheduleDayOfMonth: 1,
+    scheduleHourUtc: 6,
+    pageSelectionMode: 'random_sample',
+    staticPageUrls: [],
+    pinnedPageUrls: [],
+    sampleSize: 8,
+    enabledChecks: ['images', 'links', 'seo'],
+    formMode: 'validate_only',
+    isActive: true,
+    emailEnabled: true,
+    lastCheckAt: '2026-09-01T06:04:12.000Z',
+    nextCheckAt: '2026-10-01T06:00:00.000Z',
+    lastRunError: null,
+    recipients: [recipient()],
+    latest: {
+      scanId: 'scn_000000000100',
+      runNumber: 7,
+      status: 'completed',
+      healthScore: 94,
+      critical: 0,
+      warnings: 3,
+      pages: 8,
+      finishedAt: '2026-09-01T06:04:12.000Z',
+      scoreChange: 4,
+      triggeredByType: 'scheduled',
+    },
+    pagesEverChecked: 41,
+    activeScanId: null,
+    emailStatus: null,
+    createdAt: '2026-08-01T09:00:00.000Z',
+    updatedAt: '2026-09-01T06:04:12.000Z',
+    ...overrides,
+  };
+}
+
+export function historyItem(overrides: Partial<WebsiteHistoryItem> = {}): WebsiteHistoryItem {
+  return {
+    scanId: nextId('scn'),
+    runNumber: 1,
+    triggeredByType: 'scheduled',
+    healthScore: 90,
+    critical: 0,
+    warnings: 2,
+    pages: 8,
+    startedAt: '2026-09-01T06:00:05.000Z',
+    finishedAt: '2026-09-01T06:04:12.000Z',
+    ...overrides,
+  };
+}
+
+export function emailDelivery(overrides: Partial<EmailDelivery> = {}): EmailDelivery {
+  return {
+    id: nextId('eml'),
+    scanId: 'scn_000000000100',
+    email: 'owner@example-estates.co.uk',
+    subject: '✅ www.example-estates.co.uk — health score 94 (no new issues)',
+    status: 'sent',
+    attempts: 1,
+    provider: 'resend',
+    providerMessageId: 'msg_1',
+    error: null,
+    createdAt: '2026-09-01T06:04:20.000Z',
+    sentAt: '2026-09-01T06:04:22.000Z',
     ...overrides,
   };
 }

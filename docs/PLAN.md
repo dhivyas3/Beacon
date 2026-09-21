@@ -70,7 +70,9 @@ across them, because the email report needs the comparison and the completion ho
 8. **Websites UI and dashboard overview** - Websites nav, list, add/edit form (schedule, page
    selection, checks, recipients, email toggle), detail page with score chart and history,
    check-now, report breadcrumb and trend badge, overview dashboard of website cards, SSE
-   progress, CSV + PDF export, ignore states.
+   progress, CSV + PDF export, ignore states. Delivered (see DECISIONS.md, 'live event stream',
+   'The overview is the home page', 'The website form' and 'Exports'). The report also lists
+   what was fixed since the last check.
 9. **Docs, n8n and polish** - `INTEGRATIONS.md` with n8n workflows (including the
    n8n-scheduled pattern), deployment guide with Caddy, command palette, end-to-end test,
    accessibility and responsive pass.

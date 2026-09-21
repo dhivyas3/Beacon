@@ -41,7 +41,15 @@ function TrendTooltip({ active, payload }: { active?: boolean; payload?: Tooltip
 }
 
 /** The score of the last scans of a site. A single series, so no legend: the title names it. */
-export function ScoreTrend({ points, currentRun }: { points: TrendPoint[]; currentRun: number }) {
+export function ScoreTrend({
+  points,
+  currentRun,
+  description,
+}: {
+  points: TrendPoint[];
+  currentRun?: number;
+  description?: string;
+}) {
   const gradientId = useId().replace(/:/g, '');
   if (points.length < 2) return null;
   const last = points[points.length - 1] as TrendPoint;
@@ -51,7 +59,9 @@ export function ScoreTrend({ points, currentRun }: { points: TrendPoint[]; curre
       <CardHeader>
         <div>
           <CardTitle>Health score over time</CardTitle>
-          <CardDescription>The last {points.length} completed scans of this site.</CardDescription>
+          <CardDescription>
+            {description ?? `The last ${points.length} completed scans of this site.`}
+          </CardDescription>
         </div>
       </CardHeader>
       <CardContent>

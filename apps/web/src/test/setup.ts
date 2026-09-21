@@ -16,7 +16,12 @@ afterEach(() => {
 // The app loads these pages on demand. Loading them once up front keeps the first test that
 // navigates to one from paying for compiling it, which is slow when packages test in parallel.
 beforeAll(async () => {
-  await Promise.all([import('@/pages/scan'), import('@/pages/settings')]);
+  await Promise.all([
+    import('@/pages/scan'),
+    import('@/pages/settings'),
+    import('@/pages/website-detail'),
+    import('@/pages/website-form'),
+  ]);
 }, 60_000);
 
 beforeEach(() => {

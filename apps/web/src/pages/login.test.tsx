@@ -13,6 +13,7 @@ const signedOut = () => ({
 const signedIn = () => ({
   'GET /auth/me': () => session(),
   'GET /scans': () => pageOf([]),
+  'GET /websites': () => pageOf([]),
   'GET /settings': () => settings(),
 });
 
@@ -92,7 +93,7 @@ describe('signing in', () => {
     fakeApi(signedIn());
     renderApp('/login');
     await waitFor(() => expect(location()).toBe('/'));
-    expect(await screen.findByRole('heading', { name: 'Scans' })).toBeInTheDocument();
+    expect(await screen.findByRole('heading', { name: 'Overview' })).toBeInTheDocument();
   });
 
   it('signs out from the account menu', async () => {
@@ -108,7 +109,7 @@ describe('signing in', () => {
 
   it('returns to the login page when the session ends while using the app', async () => {
     const api = fakeApi(signedIn());
-    renderApp('/');
+    renderApp('/scans');
     await screen.findByRole('heading', { name: 'Scans' });
 
     // The session expires. The next request the app makes comes back 401.

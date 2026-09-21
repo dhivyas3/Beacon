@@ -613,7 +613,7 @@ describe('scan actions and errors', () => {
     });
     renderApp('/scans/scn_x');
     expect(await screen.findByText('Scan not found')).toBeInTheDocument();
-    expect(screen.getByRole('link', { name: 'Go to scans' })).toHaveAttribute('href', '/');
+    expect(screen.getByRole('link', { name: 'Go to scans' })).toHaveAttribute('href', '/scans');
   });
 
   it('explains other errors and retries', async () => {

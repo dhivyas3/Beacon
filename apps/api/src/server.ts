@@ -24,6 +24,7 @@ import { allowedDomainRoutes } from './routes/allowed-domains.js';
 import { apiKeyRoutes } from './routes/api-keys.js';
 import { authRoutes } from './routes/auth.js';
 import { healthRoutes } from './routes/health.js';
+import { scanExportRoutes } from './routes/scan-exports.js';
 import { scanRoutes } from './routes/scans.js';
 import { emailPreferenceRoutes } from './routes/email-preferences.js';
 import { websiteRoutes } from './routes/websites.js';
@@ -163,6 +164,7 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
       await v1.register(allowedDomainRoutes);
       await v1.register(settingsRoutes);
       await v1.register(scanRoutes, { queue, resolver: deps.resolver, storage });
+      await v1.register(scanExportRoutes, { queue, resolver: deps.resolver });
       await v1.register(websiteRoutes, { queue, resolver: deps.resolver });
       await v1.register(emailPreferenceRoutes);
     },

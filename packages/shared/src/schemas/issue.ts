@@ -54,6 +54,11 @@ export const FixedIssueSchema = z
   .meta({ id: 'FixedIssue' });
 export type FixedIssue = z.infer<typeof FixedIssueSchema>;
 
+export const FixedIssuesResponseSchema = z
+  .object({ items: z.array(FixedIssueSchema) })
+  .meta({ id: 'FixedIssuesResponse' });
+export type FixedIssuesResponse = z.infer<typeof FixedIssuesResponseSchema>;
+
 export const ListIssuesQuerySchema = PaginationQuerySchema.extend({
   severity: z.enum(SEVERITIES).optional(),
   checkType: z.enum(CHECK_TYPES).optional(),

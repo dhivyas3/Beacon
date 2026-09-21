@@ -2,6 +2,7 @@ import { findPreviousScan, Prisma, type Db } from '@beacon/db';
 import {
   computeHealthScore,
   type ComparisonLabel,
+  type FixedIssue,
   type GroupedIssue,
   type Issue,
   type ListIssuesQuery,
@@ -158,6 +159,46 @@ export async function listGroupedIssues(
     items,
     nextCursor: groups.length > query.limit ? encodeCursor(String(offset + query.limit)) : null,
   };
+}
+
+interface FixedRow {
+  fingerprint: string;
+  checkType: string;
+  severity: 'critical' | 'warning' | 'info';
+  message: string;
+  affectedPages: number;
+}
+
+/**
+ * Problems the previous check had that this scan no longer has. A scan of a sample only re-checks
+ * some pages, and an issue on a page that was not looked at again is unseen, not fixed, so for
+ * those scans only pages present in both scans (and site-wide issues) count.
+ */
+export async function listFixedIssues(
+  db: Db,
+  scan: { id: string; pageSelectionMode: 'full' | 'static_list' | 'random_sample' },
+  previousScanId: string,
+): Promise<FixedIssue[]> {
+  const onlyRechecked =
+    scan.pageSelectionMode === 'full'
+      ? Prisma.empty
+      : Prisma.sql`AND (i."pageId" IS NULL OR pp."url" IN (SELECT "url" FROM "ScanPage" WHERE "scanId" = ${scan.id}))`;
+  const rows = await db.$queryRaw<FixedRow[]>(Prisma.sql`
+    SELECT
+      i."fingerprint" AS "fingerprint",
+      (array_agg(i."checkType" ORDER BY i."createdAt", i."id"))[1] AS "checkType",
+      MIN(i."severity")::text AS "severity",
+      (array_agg(i."message" ORDER BY i."createdAt", i."id"))[1] AS "message",
+      COUNT(DISTINCT i."pageId")::int AS "affectedPages"
+    FROM "ScanIssue" i
+    LEFT JOIN "ScanPage" pp ON pp."id" = i."pageId"
+    WHERE i."scanId" = ${previousScanId} ${onlyRechecked}
+      AND NOT EXISTS (
+        SELECT 1 FROM "ScanIssue" c WHERE c."scanId" = ${scan.id} AND c."fingerprint" = i."fingerprint"
+      )
+    GROUP BY i."fingerprint"
+    ORDER BY MIN(i."severity"), COUNT(DISTINCT i."pageId") DESC, i."fingerprint"`);
+  return rows.map((row) => ({ ...row, checkType: row.checkType as FixedIssue['checkType'] }));
 }
 
 /**

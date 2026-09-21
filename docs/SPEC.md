@@ -123,7 +123,9 @@ Versioned under `/api/v1`, authenticated by an API key (`Authorization: Bearer b
 the dashboard, a session cookie. OpenAPI 3.1 is served at `/api/docs`.
 
 - **Scans:** create, list, get (with per-check results, previous scan and score change), cancel,
-  issues (flat or grouped by fingerprint), ignore or reopen an issue, screenshots, pages.
+  issues (flat or grouped by fingerprint), ignore or reopen an issue, screenshots, pages, the
+  problems fixed since the previous check, a live event stream (`/events`, server-sent), and CSV
+  and PDF exports.
 - **Websites:** create, list, get, update, delete, `check-now`, `history`, recipients.
 - **Admin:** API keys, allowed domains, settings.
 - **Conventions:** JSON error envelope `{ error: { code, message, details? } }`, cursor
@@ -164,8 +166,8 @@ enabled. Never sent for a scan of no website.
 
 ## 9. The dashboard
 
-- **Overview:** one card per website with score, trend and next check, live progress for checks
-  that are running.
+- **Overview:** the home page. One card per website with score, change since the last check
+  and next check, live progress for checks that are running, and what needs attention first.
 - **Websites:** list, add and edit (schedule, page selection, checks, form mode, recipients, email
   toggle), and a detail page with a score-over-time chart, history table, pages ever checked, and
   the configuration.

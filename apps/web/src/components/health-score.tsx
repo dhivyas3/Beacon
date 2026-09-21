@@ -1,5 +1,13 @@
 import { HEALTH_SCORE_DESCRIPTION, healthBand, type HealthBand } from '@beacon/shared';
-import { CheckCircle2, CircleHelp, TriangleAlert, XCircle } from 'lucide-react';
+import {
+  CheckCircle2,
+  CircleHelp,
+  Minus,
+  TrendingDown,
+  TrendingUp,
+  TriangleAlert,
+  XCircle,
+} from 'lucide-react';
 import { Tooltip } from '@/components/ui/tooltip';
 import { cn } from '@/lib/cn';
 
@@ -83,5 +91,33 @@ export function HealthScoreFigure({
         ) : null}
       </div>
     </div>
+  );
+}
+
+/** How the score moved since the check before it. An arrow and a sign, never colour alone. */
+export function ScoreChange({ change }: { change: number | null | undefined }) {
+  if (change === null || change === undefined) return null;
+  if (change === 0) {
+    return (
+      <span className="inline-flex items-center gap-1 text-[13px] text-muted">
+        <Minus className="size-3.5" aria-hidden />
+        No change
+      </span>
+    );
+  }
+  const up = change > 0;
+  const Icon = up ? TrendingUp : TrendingDown;
+  return (
+    <span
+      className={cn(
+        'tabular inline-flex items-center gap-1 text-[13px] font-medium',
+        up ? 'text-success-text' : 'text-critical-text',
+      )}
+    >
+      <Icon className="size-3.5" aria-hidden />
+      {up ? '+' : '−'}
+      {Math.abs(change)}
+      <span className="sr-only"> since the last check</span>
+    </span>
   );
 }

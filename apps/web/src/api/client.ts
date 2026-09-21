@@ -7,11 +7,15 @@ import type {
   CreatedApiKey,
   CreateScanBody,
   CreateScanResponse,
+  CreateWebsiteBody,
+  EmailDelivery,
+  FixedIssuesResponse,
   GroupedIssue,
   Issue,
   IssueState,
   LoginBody,
   Page,
+  RecipientInput,
   Scan,
   ScanDetail,
   ScanPage,
@@ -20,7 +24,12 @@ import type {
   Settings,
   Severity,
   UpdateIssueBody,
+  UpdateRecipientBody,
   UpdateSettingsBody,
+  UpdateWebsiteBody,
+  Website,
+  WebsiteHistoryItem,
+  WebsiteRecipient,
 } from '@beacon/shared';
 
 /** An error answered by the API, already in the `{ error: { code, message } }` shape. */
@@ -137,6 +146,14 @@ export interface PageFilters {
   q?: string | undefined;
 }
 
+export interface WebsiteListFilters {
+  q?: string | undefined;
+}
+
+/** What the form sends: the API fills in defaults for anything left out. */
+export type WebsiteCreateInput = Partial<CreateWebsiteBody> &
+  Pick<CreateWebsiteBody, 'name' | 'url'>;
+
 export const api = {
   login: (body: Pick<LoginBody, 'email' | 'password'>) =>
     request<SessionResponse>('POST', '/auth/login', { body }),
@@ -165,6 +182,37 @@ export const api = {
       }),
     updateIssue: (scanId: string, issueId: string, body: UpdateIssueBody) =>
       request<Issue>('PATCH', `/scans/${scanId}/issues/${issueId}`, { body }),
+    fixed: (id: string) => request<FixedIssuesResponse>('GET', `/scans/${id}/fixed`),
+    /** Plain links: the browser downloads these with the session cookie. */
+    csvUrl: (id: string) => `/api/v1/scans/${id}/export.csv`,
+    pdfUrl: (id: string) => `/api/v1/scans/${id}/export.pdf`,
+    eventsUrl: (id: string) => `/api/v1/scans/${id}/events`,
+  },
+
+  websites: {
+    list: (filters: WebsiteListFilters, cursor?: string) =>
+      request<Page<Website>>('GET', '/websites', { query: { ...filters, cursor, limit: 50 } }),
+    get: (id: string) => request<Website>('GET', `/websites/${id}`),
+    create: (body: WebsiteCreateInput) => request<Website>('POST', '/websites', { body }),
+    update: (id: string, body: UpdateWebsiteBody) =>
+      request<Website>('PATCH', `/websites/${id}`, { body }),
+    remove: (id: string) => request<void>('DELETE', `/websites/${id}`),
+    checkNow: (id: string) =>
+      request<CreateScanResponse>('POST', `/websites/${id}/check-now`, { body: {} }),
+    history: (id: string, cursor?: string) =>
+      request<Page<WebsiteHistoryItem>>('GET', `/websites/${id}/history`, {
+        query: { cursor, limit: 25 },
+      }),
+    emailDeliveries: (id: string, cursor?: string) =>
+      request<Page<EmailDelivery>>('GET', `/websites/${id}/email-deliveries`, {
+        query: { cursor, limit: 10 },
+      }),
+    addRecipient: (id: string, body: RecipientInput) =>
+      request<WebsiteRecipient>('POST', `/websites/${id}/recipients`, { body }),
+    updateRecipient: (id: string, recipientId: string, body: UpdateRecipientBody) =>
+      request<WebsiteRecipient>('PATCH', `/websites/${id}/recipients/${recipientId}`, { body }),
+    removeRecipient: (id: string, recipientId: string) =>
+      request<void>('DELETE', `/websites/${id}/recipients/${recipientId}`),
   },
 
   apiKeys: {

@@ -13,7 +13,7 @@ export function NotFoundPage() {
       description="The address may be mistyped, or the page may have moved."
       action={
         <Link to="/" className={buttonVariants({ variant: 'primary' })}>
-          Go to scans
+          Go to the overview
         </Link>
       }
       className="mt-10"

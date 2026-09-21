@@ -2,7 +2,7 @@
 
 Beacon keeps watch on the health of websites. Register a site once and Beacon checks it on a schedule, usually on a handful of representative pages, then reports what it found. One-off full scans, started from the dashboard, the API, n8n or monday.com, still work and are one way of triggering a check among several. Every check discovers pages, runs the checks in the background, streams progress and produces a report.
 
-> **Status: Phase 7 of 9 (email reports and callbacks).** Registered websites are checked on a schedule and the report is emailed to their recipients, with a designed HTML email, retries and a delivery log. Scans can call a URL back, signed, when they finish. The dashboard screens for websites arrive in Phase 8, and the n8n guides and end-to-end test in Phase 9. See [docs/SPEC.md](docs/SPEC.md) for the product and [docs/PLAN.md](docs/PLAN.md) for the order of work. This README describes what exists today.
+> **Status: Phase 8 of 9 (websites in the dashboard).** Add and manage websites, see every site at a glance, follow checks live and export a report as CSV or PDF, all from the dashboard. Registered websites are checked on a schedule and the report is emailed to their recipients. Scans can call a URL back, signed, when they finish. The n8n and monday.com guides and the end-to-end test arrive in Phase 9. See [docs/SPEC.md](docs/SPEC.md) for the product and [docs/PLAN.md](docs/PLAN.md) for the order of work. This README describes what exists today.
 
 ## Quick start
 
@@ -42,12 +42,14 @@ Open http://localhost:5173 and sign in with the seeded admin. In development the
 
 | Screen | What it does |
 | --- | --- |
-| Scans | Start a scan, search and filter, see live progress for active scans, open a report |
+| Overview | One card per website: latest score, change since the last check, critical and warnings, next check, and live progress for a check that is running. What needs attention comes first |
+| Websites | List, search, add and edit (schedule with your local time shown, which pages, checks, form mode, email on or off, recipients). Each website has a page with a score chart, the history of checks, **Check now**, pause, its configuration, its recipients and the log of emails sent |
+| Scans | Every scan, including one-off scans. Start a one-off scan, search and filter, see live progress for active scans, open a report |
 | Scan in progress | Percentage, phase, pages per minute, elapsed time, estimated finish, and issues as they are found. Cancel with confirmation |
-| Report | Health score with change since the last scan, score trend, findings by check, and issues by page or grouped across pages. Each issue has its evidence and a screenshot. Ignore or reopen issues |
+| Report | Which website it is a check of (or that it is a one-off scan), health score with change since the last check, score trend, what was fixed since the last check, findings by check, and issues by page or grouped across pages. Each issue has its evidence and a screenshot. Ignore or reopen issues. **Export CSV** and **Export PDF** |
 | Settings | Create and revoke API keys (shown once), allowed domains, the webhook signing secret, scan defaults. Non-admins see the defaults read-only |
 
-The dashboard follows scans by polling once a second while a scan is active. Live server-sent events replace this in Phase 6.
+The report of a running scan follows it live over server-sent events (`GET /api/v1/scans/:id/events`). Website cards and lists poll every one to two seconds while something is running, and nothing polls when everything is idle. If the event stream cannot open, the report polls once a second instead, so a proxy that blocks streams costs a little latency and nothing else.
 
 ### Try a scan on the fixture site
 
@@ -100,7 +102,7 @@ A **website** is a site you monitor. It has a schedule, a page selection, a list
 
 The worker looks for due websites every two minutes. After downtime a website is checked once, then follows its normal schedule, with no backlog.
 
-Register one from the API (the dashboard screens arrive in Phase 8). This is "monthly, 8 random pages, homepage always included":
+Add one from **Websites > Add website** in the dashboard, or register one from the API. This is "monthly, 8 random pages, homepage always included":
 
 ```bash
 curl -s -H "Authorization: Bearer $KEY" -H 'content-type: application/json' \
@@ -291,6 +293,8 @@ Cancelling a scan stops queued work and closes the browser within a page or two.
 | `page-health` | Non-2xx pages, JavaScript errors, failed requests, mixed content |
 
 Screenshots are served at `GET /api/v1/scans/:id/issues/:issueId/screenshot`.
+
+A report can be downloaded: `GET /api/v1/scans/:id/export.csv` (every issue, one row per occurrence) and `GET /api/v1/scans/:id/export.pdf` (the summary and up to 100 open problems). `GET /api/v1/scans/:id/fixed` lists the problems that are gone since the previous check.
 
 ## Decisions and plan
 

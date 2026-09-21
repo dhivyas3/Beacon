@@ -11,12 +11,23 @@ import { ThemeProvider } from '@/lib/theme';
 import { DashboardPage } from '@/pages/dashboard';
 import { LoginPage } from '@/pages/login';
 import { NotFoundPage } from '@/pages/not-found';
+import { OverviewPage } from '@/pages/overview';
+import { WebsitesPage } from '@/pages/websites';
 
 // The report pulls in the charting library and settings is rarely opened, so neither is part of
 // the first download. The dashboard and sign-in stay in the main bundle.
 const ScanPage = lazy(() => import('@/pages/scan').then((m) => ({ default: m.ScanPage })));
 const SettingsPage = lazy(() =>
   import('@/pages/settings').then((m) => ({ default: m.SettingsPage })),
+);
+const WebsiteDetailPage = lazy(() =>
+  import('@/pages/website-detail').then((m) => ({ default: m.WebsiteDetailPage })),
+);
+const AddWebsitePage = lazy(() =>
+  import('@/pages/website-form').then((m) => ({ default: m.AddWebsitePage })),
+);
+const EditWebsitePage = lazy(() =>
+  import('@/pages/website-form').then((m) => ({ default: m.EditWebsitePage })),
 );
 
 function PageFallback() {
@@ -44,7 +55,33 @@ export function AppRoutes() {
       <Route path="/login" element={<LoginPage />} />
       <Route element={<RequireAuth />}>
         <Route element={<AppShell />}>
-          <Route index element={<DashboardPage />} />
+          <Route index element={<OverviewPage />} />
+          <Route path="websites" element={<WebsitesPage />} />
+          <Route
+            path="websites/new"
+            element={
+              <Suspense fallback={<PageFallback />}>
+                <AddWebsitePage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="websites/:id"
+            element={
+              <Suspense fallback={<PageFallback />}>
+                <WebsiteDetailPage />
+              </Suspense>
+            }
+          />
+          <Route
+            path="websites/:id/edit"
+            element={
+              <Suspense fallback={<PageFallback />}>
+                <EditWebsitePage />
+              </Suspense>
+            }
+          />
+          <Route path="scans" element={<DashboardPage />} />
           <Route
             path="scans/:id"
             element={
