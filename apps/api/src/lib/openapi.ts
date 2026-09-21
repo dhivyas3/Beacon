@@ -1,4 +1,4 @@
-import { ErrorResponseSchema } from '@qa-hub/shared';
+import { ErrorResponseSchema } from '@beacon/shared';
 
 /** Response schema entries for the documented error statuses of a route. */
 export function errorResponses<const T extends number>(

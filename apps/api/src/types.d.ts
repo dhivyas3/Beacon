@@ -1,5 +1,5 @@
-import type { Db } from '@qa-hub/db';
-import type { Role, Scope } from '@qa-hub/shared';
+import type { Db } from '@beacon/db';
+import type { Role, Scope } from '@beacon/shared';
 import type { Redis } from 'ioredis';
 import type { ApiConfig } from './config.js';
 import type { ScanQueue } from './queue.js';

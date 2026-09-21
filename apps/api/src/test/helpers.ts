@@ -1,16 +1,16 @@
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { createDb, type Db } from '@qa-hub/db';
-import { LocalStorage } from '@qa-hub/storage';
-import type { HostResolver } from '@qa-hub/net';
-import { API_KEY_PREFIX, newId, type Scope } from '@qa-hub/shared';
+import { createDb, type Db } from '@beacon/db';
+import { LocalStorage } from '@beacon/storage';
+import type { HostResolver } from '@beacon/net';
+import { API_KEY_PREFIX, newId, type Scope } from '@beacon/shared';
 import {
   createIsolatedDatabase,
   testRedisUrl,
   uniquePrefix,
   type TestDatabase,
-} from '@qa-hub/testkit';
+} from '@beacon/testkit';
 import type { FastifyInstance, LightMyRequestResponse } from 'fastify';
 import { Redis } from 'ioredis';
 import { ApiEnvSchema, type ApiConfig } from '../config.js';
@@ -52,7 +52,7 @@ export async function createTestApp(overrides: Record<string, string> = {}): Pro
   const database: TestDatabase = await createIsolatedDatabase();
   const queuePrefix = uniquePrefix('api');
   const redisUrl = testRedisUrl();
-  const storageDir = await mkdtemp(join(tmpdir(), 'qa-hub-api-'));
+  const storageDir = await mkdtemp(join(tmpdir(), 'beacon-api-'));
   const storage = new LocalStorage(storageDir);
   const config = ApiEnvSchema.parse({
     NODE_ENV: 'test',
@@ -141,9 +141,9 @@ export async function createTestApp(overrides: Record<string, string> = {}): Pro
 }
 
 export function cookieHeader(res: LightMyRequestResponse): string {
-  const cookie = res.cookies.find((entry) => entry.name === 'qa_session');
+  const cookie = res.cookies.find((entry) => entry.name === 'beacon_session');
   if (!cookie) throw new Error('no session cookie in response');
-  return `qa_session=${cookie.value}`;
+  return `beacon_session=${cookie.value}`;
 }
 
 export function bearer(key: string): Record<string, string> {

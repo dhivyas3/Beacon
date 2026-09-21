@@ -1,9 +1,9 @@
 # syntax=docker/dockerfile:1.7
 #
 # One Dockerfile, three runtime targets: api, worker, web.
-#   docker build --target api    -t qa-hub-api .
-#   docker build --target worker -t qa-hub-worker .
-#   docker build --target web    -t qa-hub-web .
+#   docker build --target api    -t beacon-api .
+#   docker build --target worker -t beacon-worker .
+#   docker build --target web    -t beacon-web .
 
 FROM node:22-bookworm-slim AS base
 ENV PNPM_HOME=/pnpm
@@ -28,13 +28,13 @@ FROM build AS api
 ENV NODE_ENV=production
 EXPOSE 3000
 # Apply migrations, then start. `prisma migrate deploy` is idempotent.
-CMD ["sh", "-c", "pnpm --filter @qa-hub/db migrate && node apps/api/dist/main.js"]
+CMD ["sh", "-c", "pnpm --filter @beacon/db migrate && node apps/api/dist/main.js"]
 
 # ---- worker ---------------------------------------------------------------------------------
 FROM build AS worker
 ENV NODE_ENV=production
 # Headless Chromium and the system libraries it needs. Cached as its own layer.
-RUN pnpm --filter @qa-hub/worker exec playwright install --with-deps --only-shell chromium \
+RUN pnpm --filter @beacon/worker exec playwright install --with-deps --only-shell chromium \
   && rm -rf /var/lib/apt/lists/*
 CMD ["node", "apps/worker/dist/main.js"]
 

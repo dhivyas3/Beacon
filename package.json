@@ -1,5 +1,5 @@
 {
-  "name": "qa-hub",
+  "name": "beacon",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -14,11 +14,11 @@
     "format": "prettier --write .",
     "test": "turbo run test",
     "dev": "turbo run dev --parallel",
-    "dev:services": "pnpm --filter @qa-hub/testkit services",
-    "db:generate": "pnpm --filter @qa-hub/db generate",
-    "db:migrate": "pnpm --filter @qa-hub/db migrate",
-    "db:migrate:dev": "pnpm --filter @qa-hub/db migrate:dev",
-    "db:seed": "pnpm --filter @qa-hub/db seed"
+    "dev:services": "pnpm --filter @beacon/testkit services",
+    "db:generate": "pnpm --filter @beacon/db generate",
+    "db:migrate": "pnpm --filter @beacon/db migrate",
+    "db:migrate:dev": "pnpm --filter @beacon/db migrate:dev",
+    "db:seed": "pnpm --filter @beacon/db seed"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",

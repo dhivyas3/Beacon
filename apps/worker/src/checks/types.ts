@@ -1,4 +1,4 @@
-import type { CheckType, FormMode, Severity } from '@qa-hub/shared';
+import type { CheckType, FormMode, Severity } from '@beacon/shared';
 import type { Page } from 'playwright';
 import type { UrlCheckResult } from '../http/url-checker.js';
 import type { Logger } from '../logger.js';

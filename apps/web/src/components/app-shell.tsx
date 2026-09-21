@@ -15,13 +15,20 @@ export function Logo({ className }: { className?: string }) {
     <svg viewBox="0 0 32 32" className={cn('size-7', className)} aria-hidden>
       <rect width="32" height="32" rx="8" fill="var(--accent)" />
       <path
-        d="M9 16.5l4.5 4.5L23 11.5"
+        d="M10.6 15.4a7.8 7.8 0 0 1 10.8 0"
         fill="none"
         stroke="#fff"
-        strokeWidth="3"
+        strokeWidth="2.4"
         strokeLinecap="round"
-        strokeLinejoin="round"
       />
+      <path
+        d="M6.7 11.6a13.2 13.2 0 0 1 18.6 0"
+        fill="none"
+        stroke="#fff"
+        strokeWidth="2.4"
+        strokeLinecap="round"
+      />
+      <circle cx="16" cy="21.4" r="2.9" fill="#fff" />
     </svg>
   );
 }
@@ -116,7 +123,7 @@ export function AppShell() {
             onClick={() => void client.invalidateQueries({ queryKey: ['scans'] })}
           >
             <Logo />
-            QA Hub
+            Beacon
           </NavLink>
           <nav className="flex items-center gap-1" aria-label="Main">
             <NavLink to="/" end className={navLink}>

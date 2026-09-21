@@ -1,4 +1,4 @@
-import { QUEUES, type ScanJobData } from '@qa-hub/shared';
+import { QUEUES, type ScanJobData } from '@beacon/shared';
 import { Queue } from 'bullmq';
 import { Redis } from 'ioredis';
 

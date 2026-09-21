@@ -1,5 +1,5 @@
 import { hash } from '@node-rs/argon2';
-import { newId } from '@qa-hub/shared';
+import { newId } from '@beacon/shared';
 import { createDb } from './index.js';
 
 /**

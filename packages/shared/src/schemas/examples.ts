@@ -24,7 +24,7 @@ export const EXAMPLE_SCAN = {
   status: 'running',
   checks: ['images', 'links', 'staging-urls', 'forms', 'page-health', 'seo'],
   formMode: 'detect',
-  callbackUrl: 'https://n8n.example.com/webhook/qa-hub-callback',
+  callbackUrl: 'https://n8n.example.com/webhook/beacon-callback',
   metadata: { mondayItemId: '1234567890' },
   progress: EXAMPLE_PROGRESS,
   summary: { healthScore: null, pages: 214, critical: 3, warnings: 11, passed: 60 },
@@ -60,7 +60,7 @@ export const EXAMPLE_ISSUE = {
 export const EXAMPLE_API_KEY = {
   id: 'key_x9Y8w7V6u5T4',
   name: 'n8n production',
-  prefix: 'qah_7Hk2mP9x',
+  prefix: 'bcn_7Hk2mP9x',
   scopes: ['scans:read', 'scans:write'],
   createdAt: '2026-09-01T09:00:00.000Z',
   lastUsedAt: '2026-09-18T10:42:40.000Z',

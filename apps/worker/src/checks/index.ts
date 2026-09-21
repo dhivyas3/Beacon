@@ -1,4 +1,4 @@
-import type { CheckType } from '@qa-hub/shared';
+import type { CheckType } from '@beacon/shared';
 import { formsCheck } from './forms.js';
 import { imagesCheck } from './images.js';
 import { linksCheck } from './links.js';

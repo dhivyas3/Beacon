@@ -1,4 +1,4 @@
-import type { Issue } from '@qa-hub/shared';
+import type { Issue } from '@beacon/shared';
 import { Ban, ChevronDown, ExternalLink, EyeOff, Maximize2, RotateCcw } from 'lucide-react';
 import { useState, type ReactNode } from 'react';
 import { toast } from 'sonner';

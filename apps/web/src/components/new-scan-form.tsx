@@ -5,7 +5,7 @@ import {
   FORM_MODES,
   type CheckType,
   type FormMode,
-} from '@qa-hub/shared';
+} from '@beacon/shared';
 import { ArrowRight, SlidersHorizontal } from 'lucide-react';
 import { forwardRef, useEffect, useId, useRef, useState, type FormEvent } from 'react';
 import { Link, useNavigate } from 'react-router';

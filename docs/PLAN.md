@@ -1,6 +1,6 @@
-# QA Hub implementation plan
+# Beacon implementation plan
 
-QA Hub validates live websites after launch. A scan is submitted through a versioned,
+Beacon validates live websites after launch. A scan is submitted through a versioned,
 key-authenticated API, a worker discovers every page and runs checks in the background,
 and a React dashboard shows live progress and the final report.
 
@@ -53,17 +53,17 @@ Each phase ends with `pnpm typecheck && pnpm lint && pnpm test` green and a conv
 
 ## Key design points
 
-- **One contract.** Every request/response shape is a Zod schema in `@qa-hub/shared`.
+- **One contract.** Every request/response shape is a Zod schema in `@beacon/shared`.
   Fastify validates and serialises with them and emits the OpenAPI spec from them; the web
   client imports the inferred types.
-- **Progress computed once.** `computeProgress()` in `@qa-hub/shared` turns a `Scan` row
+- **Progress computed once.** `computeProgress()` in `@beacon/shared` turns a `Scan` row
   into the `progress` object. The API, the SSE stream and the dashboard all call it.
 - **Counters live on `Scan`.** The worker updates aggregate counters (pages, links, issue
   counts, rolling averages) at most every 2 s, so the dashboard list is one cheap query.
 - **Checks are plug-ins.** Each check is a module implementing `Check` (`id`, `label`,
   `run(context)`), registered in a single array in the worker.
 - **Safety first.** All outbound requests (scan targets, link checks, callbacks) go through
-  `@qa-hub/net`, which resolves DNS, rejects loopback / private / link-local / metadata
+  `@beacon/net`, which resolves DNS, rejects loopback / private / link-local / metadata
   ranges, re-checks on every redirect, and only allows `http(s)`.
 - **Local dev without Docker.** `pnpm dev:services` boots an embedded Postgres and a Redis
   server so tests and development run on a laptop that cannot run Docker. Docker Compose

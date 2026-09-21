@@ -15,7 +15,7 @@ export async function verifyPassword(
   password: string,
 ): Promise<boolean> {
   if (hashOrNull === null) {
-    dummyHash ??= hash('qa-hub-dummy-password');
+    dummyHash ??= hash('beacon-dummy-password');
     await verify(await dummyHash, password).catch(() => false);
     return false;
   }

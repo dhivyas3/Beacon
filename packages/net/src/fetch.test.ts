@@ -66,7 +66,7 @@ beforeAll(async () => {
   });
   await new Promise<void>((resolve) => server.listen(0, '127.0.0.1', resolve));
   base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
-  client = createSafeClient({ allowLocal: true, userAgent: 'QAHubBot/1.0-test' });
+  client = createSafeClient({ allowLocal: true, userAgent: 'BeaconBot/1.0-test' });
 });
 
 afterAll(async () => {
@@ -76,12 +76,12 @@ afterAll(async () => {
 });
 
 describe('createSafeClient (local targets allowed)', () => {
-  it('fetches a body and identifies itself with the QAHubBot user agent', async () => {
+  it('fetches a body and identifies itself with the BeaconBot user agent', async () => {
     const res = await client.fetch(`${base}/ok`);
     expect(res.status).toBe(200);
     expect(res.body?.toString()).toBe('hello');
     expect(res.chain).toEqual([]);
-    expect(seenUserAgent).toBe('QAHubBot/1.0-test');
+    expect(seenUserAgent).toBe('BeaconBot/1.0-test');
   });
 
   it('HEAD returns headers without a body', async () => {
@@ -162,7 +162,7 @@ describe('createSafeClient (local targets allowed)', () => {
 
 describe('createSafeClient (SSRF guard on)', () => {
   it('refuses a local server outright', async () => {
-    const guarded = createSafeClient({ userAgent: 'QAHubBot/1.0-test' });
+    const guarded = createSafeClient({ userAgent: 'BeaconBot/1.0-test' });
     try {
       const error = await guarded.fetch(`${base}/ok`).catch((e: unknown) => e);
       expect(error).toBeInstanceOf(FetchError);
@@ -173,7 +173,7 @@ describe('createSafeClient (SSRF guard on)', () => {
   });
 
   it('refuses the cloud metadata address without connecting', async () => {
-    const guarded = createSafeClient({ userAgent: 'QAHubBot/1.0-test' });
+    const guarded = createSafeClient({ userAgent: 'BeaconBot/1.0-test' });
     try {
       const error = await guarded
         .fetch('http://169.254.169.254/latest/meta-data/')
@@ -188,7 +188,7 @@ describe('createSafeClient (SSRF guard on)', () => {
     let calls = 0;
     // The first lookup (the pre-flight check) sees a public address, every later one a private one.
     const rebinding: HostResolver = async () => (calls++ === 0 ? ['93.184.216.34'] : ['127.0.0.1']);
-    const guarded = createSafeClient({ userAgent: 'QAHubBot/1.0-test', resolver: rebinding });
+    const guarded = createSafeClient({ userAgent: 'BeaconBot/1.0-test', resolver: rebinding });
     try {
       const error = await guarded
         .fetch(`http://rebind.example:${new URL(base).port}/ok`)

@@ -1,4 +1,4 @@
-import { createDb } from '@qa-hub/db';
+import { createDb } from '@beacon/db';
 import { Redis } from 'ioredis';
 import { loadConfig } from './config.js';
 import { buildServer } from './server.js';

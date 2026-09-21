@@ -4,7 +4,7 @@ import {
   FORM_MODES,
   type CheckType,
   type FormMode,
-} from '@qa-hub/shared';
+} from '@beacon/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useState, type FormEvent } from 'react';
 import { toast } from 'sonner';

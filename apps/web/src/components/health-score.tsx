@@ -1,4 +1,4 @@
-import { HEALTH_SCORE_DESCRIPTION, healthBand, type HealthBand } from '@qa-hub/shared';
+import { HEALTH_SCORE_DESCRIPTION, healthBand, type HealthBand } from '@beacon/shared';
 import { CheckCircle2, CircleHelp, TriangleAlert, XCircle } from 'lucide-react';
 import { Tooltip } from '@/components/ui/tooltip';
 import { cn } from '@/lib/cn';

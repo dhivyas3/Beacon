@@ -1,4 +1,4 @@
-import { computeHealthScore } from '@qa-hub/shared';
+import { computeHealthScore } from '@beacon/shared';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   createWorld,
@@ -391,10 +391,10 @@ describe('a complete scan of the fixture site', () => {
     expect(Math.max(...perPage.values())).toBeLessThanOrEqual(6);
   });
 
-  it('identifies itself as QAHubBot on every request', () => {
+  it('identifies itself as BeaconBot on every request', () => {
     const all = [...world.sites.site.requests, ...world.sites.external.requests];
     expect(all.length).toBeGreaterThan(50);
-    expect(all.every((request) => request.userAgent.includes('QAHubBot/1.0'))).toBe(true);
+    expect(all.every((request) => request.userAgent.includes('BeaconBot/1.0'))).toBe(true);
   });
 });
 
@@ -436,7 +436,7 @@ describe('scans that check forms', () => {
       '/api/forms/good',
     ]);
     expect(submissions.every((s) => s.testHeader === 'form-submission')).toBe(true);
-    expect(submissions.every((s) => s.userAgent.includes('QAHubBot/1.0'))).toBe(true);
+    expect(submissions.every((s) => s.userAgent.includes('BeaconBot/1.0'))).toBe(true);
 
     const byPage = (path: string) =>
       issues
@@ -488,7 +488,7 @@ describe('scan lifecycle', () => {
     expect(scan.finishedAt).not.toBeNull();
     expect(await world.db.scanPage.count({ where: { scanId: id } })).toBe(0);
     // Restart the fixture for the tests below.
-    const fresh = await import('@qa-hub/fixtures');
+    const fresh = await import('@beacon/fixtures');
     world.sites.site = await fresh.startFixtureSite({ externalUrl: world.sites.external.url });
   }, 60_000);
 

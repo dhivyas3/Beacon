@@ -1,6 +1,6 @@
 import { setMaxListeners } from 'node:events';
-import { loadStoredSettings, type Db, type Prisma } from '@qa-hub/db';
-import { createSafeClient, type HostResolver } from '@qa-hub/net';
+import { loadStoredSettings, type Db, type Prisma } from '@beacon/db';
+import { createSafeClient, type HostResolver } from '@beacon/net';
 import {
   computeHealthScore,
   computeTemplates,
@@ -10,8 +10,8 @@ import {
   USER_AGENT,
   type CheckType,
   type Progress,
-} from '@qa-hub/shared';
-import type { Storage } from '@qa-hub/storage';
+} from '@beacon/shared';
+import type { Storage } from '@beacon/storage';
 import { checksFor } from '../checks/index.js';
 import type { Check, CheckContext, IssueDraft } from '../checks/types.js';
 import type { WorkerConfig } from '../config.js';

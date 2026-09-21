@@ -175,16 +175,16 @@ describe('testValueFor', () => {
     expect(value({ type: 'number' })).toBe('1');
     expect(value({ type: 'number', min: '18' })).toBe('18');
     expect(value({ type: 'date' })).toBe('2030-01-15');
-    expect(value({ tag: 'textarea', type: 'textarea' })).toContain('automated test from QA Hub');
-    expect(value({ name: 'first_name' })).toBe('QA Hub');
+    expect(value({ tag: 'textarea', type: 'textarea' })).toContain('automated test from Beacon');
+    expect(value({ name: 'first_name' })).toBe('Beacon');
     expect(value({ name: 'surname' })).toBe('Test');
     expect(value({ name: 'postcode' })).toBe('12345');
-    expect(value({ name: 'company' })).toBe('QA Hub Test');
-    expect(value({ name: 'referral' })).toBe('QA Hub test');
+    expect(value({ name: 'company' })).toBe('Beacon Test');
+    expect(value({ name: 'referral' })).toBe('Beacon test');
   });
 
   it('respects length limits', () => {
-    expect(testValueFor(field({ required: true, maxLength: 4 }), 'qa@acme.test')).toBe('QA H');
+    expect(testValueFor(field({ required: true, maxLength: 4 }), 'qa@acme.test')).toBe('Beac');
     expect(testValueFor(field({ required: true, name: 'zip', minLength: 8 }), 'x')).toBe(
       '12345xxx',
     );
@@ -303,9 +303,9 @@ describe('the forms check in a browser', () => {
       expect(drafts).toEqual([]);
       expect(submissions).toHaveLength(1);
       expect(submissions[0]?.testHeader).toBe('form-submission');
-      expect(TEST_HEADER).toBe('x-qahub-test');
+      expect(TEST_HEADER).toBe('x-beacon-test');
       expect(submissions[0]?.body).toContain('qa-test@example.com');
-      expect(submissions[0]?.body).toContain('QA Hub Test');
+      expect(submissions[0]?.body).toContain('Beacon Test');
     });
 
     it('reports a form whose server fails as critical, with a screenshot of what visitors see', async () => {

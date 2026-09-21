@@ -1,6 +1,6 @@
 import { gunzipSync } from 'node:zlib';
-import { FetchError, type SafeClient } from '@qa-hub/net';
-import { looksLikePageUrl, normalizeUrl } from '@qa-hub/shared';
+import { FetchError, type SafeClient } from '@beacon/net';
+import { looksLikePageUrl, normalizeUrl } from '@beacon/shared';
 import type { Logger } from '../logger.js';
 import { runPool } from '../util/async.js';
 import type { RateLimiter } from '../util/rate-limit.js';

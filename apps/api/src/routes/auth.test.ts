@@ -32,7 +32,7 @@ describe('POST /auth/login', () => {
     expect(body.scopes).toEqual(expect.arrayContaining(['scans:read', 'scans:write']));
 
     const raw = String(res.headers['set-cookie']);
-    expect(raw).toMatch(/qa_session=/);
+    expect(raw).toMatch(/beacon_session=/);
     expect(raw).toMatch(/HttpOnly/i);
     expect(raw).toMatch(/SameSite=Lax/i);
     expect(raw).toMatch(/Path=\//);
@@ -127,7 +127,7 @@ describe('sessions', () => {
     const bogus = await ctx.app.inject({
       method: 'GET',
       url: '/api/v1/auth/me',
-      headers: { cookie: 'qa_session=not-a-real-token' },
+      headers: { cookie: 'beacon_session=not-a-real-token' },
     });
     expect(bogus.statusCode).toBe(401);
   });
@@ -140,7 +140,7 @@ describe('sessions', () => {
       headers: { cookie },
     });
     expect(out.statusCode).toBe(204);
-    expect(String(out.headers['set-cookie'])).toMatch(/qa_session=;/);
+    expect(String(out.headers['set-cookie'])).toMatch(/beacon_session=;/);
 
     const after = await ctx.app.inject({
       method: 'GET',

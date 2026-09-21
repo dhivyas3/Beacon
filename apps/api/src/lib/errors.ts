@@ -1,4 +1,4 @@
-import { ERROR_STATUS, type ErrorCode } from '@qa-hub/shared';
+import { ERROR_STATUS, type ErrorCode } from '@beacon/shared';
 
 /** An error that maps to a JSON error envelope: `{ error: { code, message, details? } }`. */
 export class ApiError extends Error {

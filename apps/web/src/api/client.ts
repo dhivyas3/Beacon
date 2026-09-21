@@ -21,7 +21,7 @@ import type {
   Severity,
   UpdateIssueBody,
   UpdateSettingsBody,
-} from '@qa-hub/shared';
+} from '@beacon/shared';
 
 /** An error answered by the API, already in the `{ error: { code, message } }` shape. */
 export class ApiClientError extends Error {
@@ -56,7 +56,7 @@ export function onUnauthorized(handler: (() => void) | null): void {
 }
 
 const NETWORK_MESSAGE =
-  'QA Hub could not reach the server. Check your connection and that the API is running, then try again.';
+  'Beacon could not reach the server. Check your connection and that the API is running, then try again.';
 
 async function request<T>(
   method: string,

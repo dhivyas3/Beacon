@@ -1,4 +1,4 @@
-import { matchesStagingPattern } from '@qa-hub/shared';
+import { matchesStagingPattern } from '@beacon/shared';
 import type { Check, CheckContext, IssueDraft } from './types.js';
 
 interface Reference {

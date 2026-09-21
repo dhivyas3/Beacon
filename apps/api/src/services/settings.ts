@@ -1,5 +1,5 @@
-import { loadStoredSettings, saveStoredSettings, type Db } from '@qa-hub/db';
-import { type Settings, type UpdateSettingsBody } from '@qa-hub/shared';
+import { loadStoredSettings, saveStoredSettings, type Db } from '@beacon/db';
+import { type Settings, type UpdateSettingsBody } from '@beacon/shared';
 import type { ApiConfig } from '../config.js';
 
 function maskSecret(secret: string): string {

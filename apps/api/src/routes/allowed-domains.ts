@@ -1,11 +1,11 @@
-import { isUniqueViolation } from '@qa-hub/db';
+import { isUniqueViolation } from '@beacon/db';
 import {
   AllowedDomainSchema,
   CreateAllowedDomainBodySchema,
   IdParamSchema,
   newId,
   type AllowedDomain,
-} from '@qa-hub/shared';
+} from '@beacon/shared';
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { ApiError, notFound } from '../lib/errors.js';

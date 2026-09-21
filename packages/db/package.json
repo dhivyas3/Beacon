@@ -1,5 +1,5 @@
 {
-  "name": "@qa-hub/db",
+  "name": "@beacon/db",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -22,12 +22,12 @@
   },
   "dependencies": {
     "@prisma/client": "^6.19.3",
-    "@qa-hub/shared": "workspace:*",
+    "@beacon/shared": "workspace:*",
     "zod": "^4.6.5",
     "@node-rs/argon2": "^2.0.2"
   },
   "devDependencies": {
-    "@qa-hub/testkit": "workspace:*",
+    "@beacon/testkit": "workspace:*",
     "@types/node": "^22.20.4",
     "prisma": "^6.19.3",
     "tsx": "^4.23.15",

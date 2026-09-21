@@ -11,7 +11,7 @@ export interface RecordedRequest {
   path: string;
   userAgent: string;
   body: string;
-  /** Value of the `X-QAHub-Test` header, present on form submissions made by the forms check. */
+  /** Value of the `X-Beacon-Test` header, present on form submissions made by the forms check. */
   testHeader: string | null;
 }
 
@@ -149,7 +149,7 @@ function closer(server: Server): () => Promise<void> {
 }
 
 /**
- * The fixture site: a small static site that deliberately contains every kind of defect QA Hub
+ * The fixture site: a small static site that deliberately contains every kind of defect Beacon
  * looks for. Pages, and what is wrong with them, are described in fixtures/site/README.md.
  */
 export async function startFixtureSite(options: FixtureOptions = {}): Promise<FixtureSite> {
@@ -174,7 +174,7 @@ export async function startFixtureSite(options: FixtureOptions = {}): Promise<Fi
       userAgent: String(req.headers['user-agent'] ?? ''),
       body,
       testHeader:
-        req.headers['x-qahub-test'] === undefined ? null : String(req.headers['x-qahub-test']),
+        req.headers['x-beacon-test'] === undefined ? null : String(req.headers['x-beacon-test']),
     };
     requests.push(record);
     const vars = { origin, external: options.externalUrl ?? origin };

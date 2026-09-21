@@ -8,7 +8,7 @@ import {
   SCOPES,
   type ApiKey,
   type Scope,
-} from '@qa-hub/shared';
+} from '@beacon/shared';
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { randomToken, sha256 } from '../lib/crypto.js';

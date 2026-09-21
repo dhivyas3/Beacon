@@ -1,4 +1,4 @@
-import { FetchError, type FetchHop, type SafeClient } from '@qa-hub/net';
+import { FetchError, type FetchHop, type SafeClient } from '@beacon/net';
 import { sleep } from '../util/async.js';
 import type { HostThrottle } from '../util/rate-limit.js';
 import { type RateLimiter } from '../util/rate-limit.js';

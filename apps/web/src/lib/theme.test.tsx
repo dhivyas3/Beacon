@@ -27,7 +27,7 @@ describe('theme', () => {
     const { result } = renderHook(() => useTheme(), { wrapper: withTheme });
     act(() => result.current.setPreference('dark'));
     expect(document.documentElement).toHaveAttribute('data-theme', 'dark');
-    expect(localStorage.getItem('qa-hub-theme')).toBe('dark');
+    expect(localStorage.getItem('beacon-theme')).toBe('dark');
 
     const again = renderHook(() => useTheme(), { wrapper: withTheme });
     expect(again.result.current.preference).toBe('dark');

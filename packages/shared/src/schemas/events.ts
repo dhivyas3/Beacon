@@ -21,7 +21,7 @@ export type IssueEvent = z.infer<typeof IssueEventSchema>;
 export const SSE_EVENT_TYPES = ['progress', 'issue', 'done'] as const;
 export type SseEventType = (typeof SSE_EVENT_TYPES)[number];
 
-/** Body POSTed to `callbackUrl`. Signed with `X-QAHub-Signature: sha256=<hmac>`. */
+/** Body POSTed to `callbackUrl`. Signed with `X-Beacon-Signature: sha256=<hmac>`. */
 export const WebhookPayloadSchema = z
   .object({
     event: z.enum(WEBHOOK_EVENTS),
@@ -51,4 +51,4 @@ export const WebhookPayloadSchema = z
   });
 export type WebhookPayload = z.infer<typeof WebhookPayloadSchema>;
 
-export const SIGNATURE_HEADER = 'X-QAHub-Signature';
+export const SIGNATURE_HEADER = 'X-Beacon-Signature';

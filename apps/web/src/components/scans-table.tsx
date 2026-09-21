@@ -1,4 +1,4 @@
-import type { Scan } from '@qa-hub/shared';
+import type { Scan } from '@beacon/shared';
 import { KeyRound, User } from 'lucide-react';
 import { Link, useNavigate } from 'react-router';
 import { HealthScorePill } from '@/components/health-score';

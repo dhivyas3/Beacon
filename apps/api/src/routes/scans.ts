@@ -14,8 +14,8 @@ import {
   pageOf,
   type Page,
   type ScanPage,
-} from '@qa-hub/shared';
-import type { Prisma } from '@qa-hub/db';
+} from '@beacon/shared';
+import type { Prisma } from '@beacon/db';
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { ApiError, notFound } from '../lib/errors.js';
@@ -25,8 +25,8 @@ import { listGroupedIssues, listIssues, updateIssue } from '../services/issues.j
 import { statusUrlOf, reportUrlOf } from '../services/scan-view.js';
 import { ScanService } from '../services/scans.js';
 import type { ScanQueue } from '../queue.js';
-import type { HostResolver } from '@qa-hub/net';
-import { InvalidStorageKeyError, type Storage } from '@qa-hub/storage';
+import type { HostResolver } from '@beacon/net';
+import { InvalidStorageKeyError, type Storage } from '@beacon/storage';
 
 export interface ScanRouteOptions {
   queue: ScanQueue;

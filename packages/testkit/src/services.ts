@@ -15,7 +15,7 @@ async function main(): Promise<void> {
     port: pgPort,
     dataDir: join(REPO_ROOT, 'data', 'postgres'),
   });
-  const url = await ensureDatabase(postgres.adminUrl, 'qahub');
+  const url = await ensureDatabase(postgres.adminUrl, 'beacon');
   const redis = await startRedis({ port: redisPort });
 
   console.log('\nServices are running. Press Ctrl+C to stop.\n');

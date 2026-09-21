@@ -1,4 +1,4 @@
-import type { AllowedDomain } from '@qa-hub/shared';
+import type { AllowedDomain } from '@beacon/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { Globe, Plus, Trash2 } from 'lucide-react';
 import { useState, type FormEvent } from 'react';

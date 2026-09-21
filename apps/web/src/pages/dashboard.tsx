@@ -1,4 +1,4 @@
-import { SCAN_STATUSES, type ScanStatus } from '@qa-hub/shared';
+import { SCAN_STATUSES, type ScanStatus } from '@beacon/shared';
 import { Loader2, Radar, Search, X } from 'lucide-react';
 import { useMemo, useRef, useState } from 'react';
 import { useScansInfinite } from '@/api/hooks';
@@ -20,7 +20,7 @@ const STATUS_LABELS: Record<ScanStatus, string> = {
 };
 
 export function DashboardPage() {
-  useDocumentTitle('Scans · QA Hub');
+  useDocumentTitle('Scans · Beacon');
   const urlInput = useRef<HTMLInputElement>(null);
 
   const [search, setSearch] = useState('');
@@ -132,7 +132,7 @@ export function DashboardPage() {
             <EmptyState
               icon={Radar}
               title="Run your first scan"
-              description="Enter the address of a live site above. QA Hub finds every page and checks images, links, staging URLs and page health."
+              description="Enter the address of a live site above. Beacon finds every page and checks images, links, staging URLs and page health."
               action={
                 <Button variant="primary" onClick={() => urlInput.current?.focus()}>
                   Enter a site address

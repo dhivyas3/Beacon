@@ -1,4 +1,4 @@
-import { isActiveStatus, type ScanDetail, type Severity } from '@qa-hub/shared';
+import { isActiveStatus, type ScanDetail, type Severity } from '@beacon/shared';
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { ArrowLeft, Link2, RotateCw, XCircle } from 'lucide-react';
 import { useMemo, useState } from 'react';
@@ -260,7 +260,7 @@ export function ScanPage() {
     ? isActiveStatus(current.status)
       ? `${current.progress.percent}% · ${current.hostname}`
       : `${current.hostname} · Report`
-    : 'Scan · QA Hub';
+    : 'Scan · Beacon';
   useDocumentTitle(title);
 
   if (scan.isPending) return <DetailSkeleton />;

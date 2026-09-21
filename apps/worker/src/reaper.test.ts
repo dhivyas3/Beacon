@@ -1,7 +1,7 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { createDb, type Db } from '@qa-hub/db';
-import { newId } from '@qa-hub/shared';
-import { createIsolatedDatabase, type TestDatabase } from '@qa-hub/testkit';
+import { createDb, type Db } from '@beacon/db';
+import { newId } from '@beacon/shared';
+import { createIsolatedDatabase, type TestDatabase } from '@beacon/testkit';
 import { pino } from 'pino';
 import { reapStaleScans, STALE_AFTER_MS } from './reaper.js';
 

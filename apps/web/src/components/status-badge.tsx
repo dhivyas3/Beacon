@@ -1,4 +1,4 @@
-import type { ScanStatus } from '@qa-hub/shared';
+import type { ScanStatus } from '@beacon/shared';
 import { Ban, CheckCircle2, Clock, Loader2, Radar, XCircle } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { Badge, type BadgeProps } from '@/components/ui/badge';

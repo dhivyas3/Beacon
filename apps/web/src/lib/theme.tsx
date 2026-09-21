@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 export type ThemePreference = 'system' | 'light' | 'dark';
 export type ResolvedTheme = 'light' | 'dark';
 
-const STORAGE_KEY = 'qa-hub-theme';
+const STORAGE_KEY = 'beacon-theme';
 
 function readPreference(): ThemePreference {
   try {

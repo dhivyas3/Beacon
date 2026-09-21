@@ -1,6 +1,6 @@
-import type { Db, Prisma } from '@qa-hub/db';
-import type { CheckType } from '@qa-hub/shared';
-import { newId } from '@qa-hub/shared';
+import type { Db, Prisma } from '@beacon/db';
+import type { CheckType } from '@beacon/shared';
+import { newId } from '@beacon/shared';
 import type { IssueDraft, IssueSink } from '../checks/types.js';
 import { fingerprintOf } from '../util/fingerprint.js';
 import type { ProgressTracker } from './progress.js';

@@ -1,4 +1,4 @@
-import type { ErrorCode } from '@qa-hub/shared';
+import type { ErrorCode } from '@beacon/shared';
 import type { FastifyError, FastifyInstance, FastifyReply } from 'fastify';
 import {
   hasZodFastifySchemaValidationErrors,

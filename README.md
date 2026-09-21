@@ -1,6 +1,6 @@
-# QA Hub
+# Beacon
 
-QA Hub validates live websites after launch. Submit a URL (from the dashboard, n8n, monday.com via n8n, or CI) and it assigns a scan ID, discovers every page, runs checks in the background, streams progress, and produces a report.
+Beacon validates live websites after launch. Submit a URL (from the dashboard, n8n, monday.com via n8n, or CI) and it assigns a scan ID, discovers every page, runs checks in the background, streams progress, and produces a report.
 
 > **Status: Phase 5 of 6 (forms and SEO).** All six checks are live: images, links, staging URLs, page health, forms and SEO. Forms can be detected, validated without sending anything, or submitted with test data. Callbacks, live SSE updates, CSV/PDF export and the command palette arrive in Phase 6. See [docs/PLAN.md](docs/PLAN.md). This README describes what exists today.
 
@@ -30,11 +30,11 @@ pnpm db:seed
 pnpm dev                 # api :3000, worker, web :5173
 ```
 
-Edit `.env` after copying it: set `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/qahub` and `REDIS_URL=redis://127.0.0.1:6379` (the values `pnpm dev:services` prints), `PUBLIC_URL=http://localhost:5173`, and a `SEED_ADMIN_PASSWORD` of your own. `pnpm db:migrate` and `pnpm db:seed` read the root `.env` themselves.
+Edit `.env` after copying it: set `DATABASE_URL=postgresql://postgres:postgres@127.0.0.1:5432/beacon` and `REDIS_URL=redis://127.0.0.1:6379` (the values `pnpm dev:services` prints), `PUBLIC_URL=http://localhost:5173`, and a `SEED_ADMIN_PASSWORD` of your own. `pnpm db:migrate` and `pnpm db:seed` read the root `.env` themselves.
 
 `pnpm dev:services` needs a `redis-server` binary. It looks for `REDIS_SERVER_BIN`, then `.tools/redis/`, then `PATH`.
 
-The worker drives Chromium. Install it once with `pnpm --filter @qa-hub/worker exec playwright install chromium` (the Docker image does this for you).
+The worker drives Chromium. Install it once with `pnpm --filter @beacon/worker exec playwright install chromium` (the Docker image does this for you).
 
 ### The dashboard
 
@@ -54,7 +54,7 @@ The dashboard follows scans by polling once a second while a scan is active. Liv
 The repo ships a small site with deliberate defects. It is the only thing you should scan while developing.
 
 ```bash
-pnpm --filter @qa-hub/fixtures serve   # http://127.0.0.1:4010
+pnpm --filter @beacon/fixtures serve   # http://127.0.0.1:4010
 # In .env set ALLOW_LOCAL_TARGETS=true, allow 127.0.0.1 (step 2 of the API walkthrough), then start a scan of http://127.0.0.1:4010
 ```
 
@@ -73,13 +73,13 @@ See [fixtures/site/README.md](fixtures/site/README.md) for what is wrong with ea
 
 ### Form modes
 
-| Mode | What QA Hub does | Sends anything? |
+| Mode | What Beacon does | Sends anything? |
 | --- | --- | --- |
 | `detect` (default) | Reads the markup only: no submit button, a secure page posting to `http://` | No |
 | `validate_only` | Also submits each form empty, and with a bad email address, in a copy of the page where every request that could send data is blocked | No, never |
 | `submit` | Also fills each form with clearly marked test data and submits it once, then checks the result: server error, rejection, nothing sent, no confirmation, or an error message shown. Needs the `forms:submit` permission | Yes, once per distinct form |
 
-Login, payment, file upload, CAPTCHA, search and third-party forms are never touched, and neither are forms with a destructive or financial button such as "Delete" or "Buy now". Each is reported as skipped with the reason. Requests QA Hub sends when submitting carry an `X-QAHub-Test: form-submission` header so site owners can filter them.
+Login, payment, file upload, CAPTCHA, search and third-party forms are never touched, and neither are forms with a destructive or financial button such as "Delete" or "Buy now". Each is reported as skipped with the reason. Requests Beacon sends when submitting carry an `X-Beacon-Test: form-submission` header so site owners can filter them.
 
 ## Architecture
 
@@ -122,7 +122,7 @@ flowchart LR
 | `pnpm lint` | ESLint and Prettier check |
 | `pnpm test` | Unit and integration tests (starts its own Postgres and Redis if none are configured) |
 | `pnpm dev` | Watch mode for api, worker and web |
-| `pnpm --filter @qa-hub/web test` | Web component and page tests (Vitest, Testing Library, jsdom) |
+| `pnpm --filter @beacon/web test` | Web component and page tests (Vitest, Testing Library, jsdom) |
 | `pnpm db:migrate` | Apply migrations |
 | `pnpm db:seed` | Create the first admin from `SEED_ADMIN_*` |
 
@@ -148,7 +148,7 @@ curl -s -b jar.txt -H 'content-type: application/json' \
 # 3. Create an API key for n8n or CI. The raw key is shown once, so copy it now.
 curl -s -b jar.txt -H 'content-type: application/json' \
   -d '{"name":"n8n production","scopes":["scans:read","scans:write"]}' $BASE/api/v1/api-keys
-KEY=qah_...   # the "key" field from the response
+KEY=bcn_...   # the "key" field from the response
 
 # 4. Start a scan. Repeating the Idempotency-Key returns the same scan.
 curl -s -H "authorization: Bearer $KEY" -H 'content-type: application/json' \

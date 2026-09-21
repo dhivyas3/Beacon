@@ -1,6 +1,6 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { newId } from '@qa-hub/shared';
-import { createIsolatedDatabase, type TestDatabase } from '@qa-hub/testkit';
+import { newId } from '@beacon/shared';
+import { createIsolatedDatabase, type TestDatabase } from '@beacon/testkit';
 import { createDb, isUniqueViolation, type Db } from './index.js';
 
 let database: TestDatabase;

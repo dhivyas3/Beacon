@@ -8,7 +8,7 @@ let dir: string;
 let storage: LocalStorage;
 
 beforeEach(async () => {
-  dir = await mkdtemp(join(tmpdir(), 'qa-hub-storage-'));
+  dir = await mkdtemp(join(tmpdir(), 'beacon-storage-'));
   storage = new LocalStorage(dir);
 });
 

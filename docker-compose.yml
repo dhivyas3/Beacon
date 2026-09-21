@@ -1,10 +1,10 @@
-# QA Hub: `docker compose up --build` starts the whole system on http://localhost:8080.
+# Beacon: `docker compose up --build` starts the whole system on http://localhost:8080.
 # Copy .env.example to .env first and set WEBHOOK_SIGNING_SECRET and the SEED_ADMIN_* values.
 
 x-app-env: &app-env
   NODE_ENV: production
   LOG_LEVEL: ${LOG_LEVEL:-info}
-  DATABASE_URL: postgresql://qahub:${POSTGRES_PASSWORD:-qahub}@postgres:5432/qahub
+  DATABASE_URL: postgresql://beacon:${POSTGRES_PASSWORD:-beacon}@postgres:5432/beacon
   REDIS_URL: redis://redis:6379
   PUBLIC_URL: ${PUBLIC_URL:-http://localhost:8080}
   STORAGE_DIR: /data/storage
@@ -23,13 +23,13 @@ services:
     image: postgres:16-alpine
     restart: unless-stopped
     environment:
-      POSTGRES_USER: qahub
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-qahub}
-      POSTGRES_DB: qahub
+      POSTGRES_USER: beacon
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-beacon}
+      POSTGRES_DB: beacon
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ['CMD-SHELL', 'pg_isready -U qahub -d qahub']
+      test: ['CMD-SHELL', 'pg_isready -U beacon -d beacon']
       interval: 5s
       timeout: 5s
       retries: 10

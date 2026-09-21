@@ -1,4 +1,4 @@
-import { CHECK_TYPES, FORM_MODES, type CheckType, type FormMode } from '@qa-hub/shared';
+import { CHECK_TYPES, FORM_MODES, type CheckType, type FormMode } from '@beacon/shared';
 import { z } from 'zod';
 import type { Db } from './index.js';
 

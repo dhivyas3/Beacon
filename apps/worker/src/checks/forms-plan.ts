@@ -16,12 +16,12 @@ export type SkipReason =
 
 const SKIP_TEXT: Record<SkipReason, string> = {
   captcha: 'It has a CAPTCHA, which cannot be solved automatically. Test it by hand.',
-  login: 'It has a password field. QA Hub never signs in or submits credentials.',
-  'file-upload': 'It uploads a file. QA Hub does not upload files to a live site.',
-  payment: 'It looks like a payment form. QA Hub never submits payment details.',
+  login: 'It has a password field. Beacon never signs in or submits credentials.',
+  'file-upload': 'It uploads a file. Beacon does not upload files to a live site.',
+  payment: 'It looks like a payment form. Beacon never submits payment details.',
   destructive:
     'Its button looks destructive or financial (delete, buy, pay). It was not submitted.',
-  'external-action': 'It sends data to another site, which QA Hub does not submit to.',
+  'external-action': 'It sends data to another site, which Beacon does not submit to.',
   search: 'It is a search box.',
   'no-submit': 'It has no submit button.',
   'no-fields': 'It has no fields to fill in.',
@@ -207,15 +207,15 @@ export function testValueFor(field: SnapFormField, testEmail: string): string | 
   if (type === 'number' || type === 'range') return field.min ?? '1';
   if (DATE_VALUES[type] !== undefined) return DATE_VALUES[type] ?? null;
   if (field.tag === 'textarea' || /\b(message|comment|enquiry|inquiry|details)\b/.test(hint)) {
-    return fit(field, 'This is an automated test from QA Hub. Please ignore it.');
+    return fit(field, 'This is an automated test from Beacon. Please ignore it.');
   }
-  if (/\b(first|given)\b/.test(hint)) return fit(field, 'QA Hub');
+  if (/\b(first|given)\b/.test(hint)) return fit(field, 'Beacon');
   if (/\b(last|surname|family)\b/.test(hint)) return fit(field, 'Test');
   if (/\b(zip|postal|postcode)\b/.test(hint)) return fit(field, '12345');
   if (/\bcity|town\b/.test(hint)) return fit(field, 'Testville');
-  if (/\b(company|organi[sz]ation|business)\b/.test(hint)) return fit(field, 'QA Hub Test');
-  if (/\bname\b/.test(hint)) return fit(field, 'QA Hub Test');
-  return fit(field, 'QA Hub test');
+  if (/\b(company|organi[sz]ation|business)\b/.test(hint)) return fit(field, 'Beacon Test');
+  if (/\bname\b/.test(hint)) return fit(field, 'Beacon Test');
+  return fit(field, 'Beacon test');
 }
 
 /** True when the form has at least one required field. */

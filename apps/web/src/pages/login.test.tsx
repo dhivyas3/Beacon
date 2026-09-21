@@ -20,7 +20,7 @@ describe('signing in', () => {
   it('sends people who are not signed in to the login page, and remembers where they were going', async () => {
     fakeApi(signedOut());
     renderApp('/scans/scn_000000000009');
-    await screen.findByRole('heading', { name: 'Sign in to QA Hub' });
+    await screen.findByRole('heading', { name: 'Sign in to Beacon' });
     expect(location()).toBe('/login?next=%2Fscans%2Fscn_000000000009');
   });
 

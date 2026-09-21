@@ -1,5 +1,5 @@
-import type { Db } from '@qa-hub/db';
-import { newId } from '@qa-hub/shared';
+import type { Db } from '@beacon/db';
+import { newId } from '@beacon/shared';
 import { classifyLink } from '../checks/links.js';
 import type { IssueSink, LinkCandidate, LinkCollector, LinkVerification } from '../checks/types.js';
 import type { UrlChecker } from '../http/url-checker.js';

@@ -1,11 +1,17 @@
-import { API_KEY_PREFIX, SCOPES, scopesForRole, type Scope } from '@qa-hub/shared';
+import {
+  API_KEY_PREFIX,
+  LEGACY_API_KEY_PREFIXES,
+  SCOPES,
+  scopesForRole,
+  type Scope,
+} from '@beacon/shared';
 import type { FastifyInstance, FastifyRequest } from 'fastify';
 import fp from 'fastify-plugin';
 import { sha256 } from '../lib/crypto.js';
 import { ApiError } from '../lib/errors.js';
 import type { Actor, AuthRequirement } from '../types.js';
 
-export const SESSION_COOKIE = 'qa_session';
+export const SESSION_COOKIE = 'beacon_session';
 const BEARER = /^Bearer\s+(\S+)\s*$/i;
 const LAST_USED_THROTTLE_MS = 60_000;
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
@@ -19,7 +25,9 @@ async function actorFromApiKey(app: FastifyInstance, raw: string): Promise<Actor
     'unauthorized',
     'The API key is invalid or has been revoked. Create a new key in Settings.',
   );
-  if (!raw.startsWith(API_KEY_PREFIX)) throw invalid;
+  if (![API_KEY_PREFIX, ...LEGACY_API_KEY_PREFIXES].some((prefix) => raw.startsWith(prefix))) {
+    throw invalid;
+  }
 
   const key = await app.db.apiKey.findUnique({ where: { keyHash: sha256(raw) } });
   if (!key || key.revokedAt !== null) throw invalid;

@@ -1,6 +1,6 @@
-import { createDb, type Db } from '@qa-hub/db';
-import { newId, type Progress } from '@qa-hub/shared';
-import { createIsolatedDatabase, type TestDatabase } from '@qa-hub/testkit';
+import { createDb, type Db } from '@beacon/db';
+import { newId, type Progress } from '@beacon/shared';
+import { createIsolatedDatabase, type TestDatabase } from '@beacon/testkit';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { silentLog, waitFor } from '../test/harness.js';
 import { ProgressTracker } from './progress.js';

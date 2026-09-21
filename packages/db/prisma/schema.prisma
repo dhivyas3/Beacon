@@ -1,4 +1,4 @@
-// QA Hub data model. IDs are prefixed nanoids generated in application code (see @qa-hub/shared newId).
+// Beacon data model. IDs are prefixed nanoids generated in application code (see @beacon/shared newId).
 
 generator client {
   provider = "prisma-client-js"

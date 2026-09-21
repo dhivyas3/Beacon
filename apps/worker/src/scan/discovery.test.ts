@@ -1,4 +1,4 @@
-import { createSafeClient, type SafeClient } from '@qa-hub/net';
+import { createSafeClient, type SafeClient } from '@beacon/net';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { offlineResolver, silentLog, startSites, type Sites } from '../test/harness.js';
 import { RateLimiter } from '../util/rate-limit.js';
@@ -89,7 +89,7 @@ describe('discoverPages against the fixture site', () => {
     client = createSafeClient({
       allowLocal: true,
       resolver: offlineResolver,
-      userAgent: 'QAHubBot/1.0-test',
+      userAgent: 'BeaconBot/1.0-test',
     });
   });
 
@@ -200,7 +200,7 @@ describe('discoverPages against the fixture site', () => {
     sites.site.reset();
     await discoverPages(options());
     expect(sites.site.requests.length).toBeGreaterThan(10);
-    expect(sites.site.requests.every((request) => request.userAgent.includes('QAHubBot'))).toBe(
+    expect(sites.site.requests.every((request) => request.userAgent.includes('BeaconBot'))).toBe(
       true,
     );
   });

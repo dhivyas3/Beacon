@@ -35,7 +35,7 @@ describe('CreateScanBodySchema', () => {
       url: 'https://www.example-estates.co.uk',
       checks: ['images', 'links', 'seo'],
       formMode: 'detect',
-      callbackUrl: 'https://n8n.example.com/webhook/qa-hub-callback',
+      callbackUrl: 'https://n8n.example.com/webhook/beacon-callback',
       metadata: { mondayItemId: '1234567890' },
     });
     expect(parsed.success).toBe(true);

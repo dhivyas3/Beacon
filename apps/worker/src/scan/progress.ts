@@ -1,4 +1,4 @@
-import type { Db } from '@qa-hub/db';
+import type { Db } from '@beacon/db';
 import {
   average,
   computeProgress,
@@ -6,7 +6,7 @@ import {
   ROLLING_WINDOW,
   type Progress,
   type ScanStage,
-} from '@qa-hub/shared';
+} from '@beacon/shared';
 import type { Logger } from '../logger.js';
 
 export interface ProgressConfig {

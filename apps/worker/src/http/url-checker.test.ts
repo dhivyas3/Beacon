@@ -113,12 +113,12 @@ describe('UrlChecker', () => {
     }
   });
 
-  it('identifies itself as QAHubBot', async () => {
+  it('identifies itself as BeaconBot', async () => {
     const { checker, client } = createChecker();
     try {
       sites.site.reset();
       await checker.check(`${sites.site.url}/about`, { external: false });
-      expect(sites.site.requests[0]?.userAgent).toContain('QAHubBot/1.0');
+      expect(sites.site.requests[0]?.userAgent).toContain('BeaconBot/1.0');
     } finally {
       await client.close();
     }

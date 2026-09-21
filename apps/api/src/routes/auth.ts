@@ -1,5 +1,5 @@
-import { LoginBodySchema, scopesForRole, SessionResponseSchema, type User } from '@qa-hub/shared';
-import { newId } from '@qa-hub/shared';
+import { LoginBodySchema, scopesForRole, SessionResponseSchema, type User } from '@beacon/shared';
+import { newId } from '@beacon/shared';
 import type { FastifyPluginAsyncZod } from 'fastify-type-provider-zod';
 import { z } from 'zod';
 import { randomToken, sha256 } from '../lib/crypto.js';

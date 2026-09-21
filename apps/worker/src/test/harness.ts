@@ -1,12 +1,12 @@
 import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
-import { startExternalSite, startFixtureSite, type FixtureSite } from '@qa-hub/fixtures';
-import { createDb, type Db } from '@qa-hub/db';
-import { createSafeClient, type HostResolver, type SafeClient } from '@qa-hub/net';
-import { CHECK_TYPES, newId, USER_AGENT, type CheckType, type FormMode } from '@qa-hub/shared';
-import { LocalStorage } from '@qa-hub/storage';
-import { createIsolatedDatabase, uniquePrefix, type TestDatabase } from '@qa-hub/testkit';
+import { startExternalSite, startFixtureSite, type FixtureSite } from '@beacon/fixtures';
+import { createDb, type Db } from '@beacon/db';
+import { createSafeClient, type HostResolver, type SafeClient } from '@beacon/net';
+import { CHECK_TYPES, newId, USER_AGENT, type CheckType, type FormMode } from '@beacon/shared';
+import { LocalStorage } from '@beacon/storage';
+import { createIsolatedDatabase, uniquePrefix, type TestDatabase } from '@beacon/testkit';
 import { pino } from 'pino';
 import { WorkerEnvSchema, type WorkerConfig } from '../config.js';
 import type { Check, CheckContext, IssueDraft, ScanInfo } from '../checks/types.js';
@@ -63,14 +63,14 @@ export interface TestWorld {
 /** Everything a scan needs: isolated database, fixture sites, storage folder, test config. */
 export async function createWorld(env: Record<string, string> = {}): Promise<TestWorld> {
   const database: TestDatabase = await createIsolatedDatabase();
-  const storageDir = await mkdtemp(join(tmpdir(), 'qa-hub-worker-'));
+  const storageDir = await mkdtemp(join(tmpdir(), 'beacon-worker-'));
   const sites = await startSites();
   const db = createDb({ url: database.url, log: false });
   const config = WorkerEnvSchema.parse({
     NODE_ENV: 'test',
     LOG_LEVEL: 'silent',
     DATABASE_URL: database.url,
-    REDIS_URL: process.env.QA_TEST_REDIS_URL ?? 'redis://127.0.0.1:6379',
+    REDIS_URL: process.env.BEACON_TEST_REDIS_URL ?? 'redis://127.0.0.1:6379',
     QUEUE_PREFIX: uniquePrefix('worker'),
     WEBHOOK_SIGNING_SECRET: 'test-signing-secret-0123456789',
     STORAGE_DIR: storageDir,

@@ -1,4 +1,4 @@
-import { Prisma, type Db } from '@qa-hub/db';
+import { Prisma, type Db } from '@beacon/db';
 import {
   computeHealthScore,
   type ComparisonLabel,
@@ -7,7 +7,7 @@ import {
   type ListIssuesQuery,
   type Page,
   type UpdateIssueBody,
-} from '@qa-hub/shared';
+} from '@beacon/shared';
 import { ApiError, notFound } from '../lib/errors.js';
 import { decodeCursor, encodeCursor, paginateById } from '../lib/pagination.js';
 import { issueInclude, toIssueDto, type IssueRow, type ViewContext } from './scan-view.js';

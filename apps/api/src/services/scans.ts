@@ -1,4 +1,4 @@
-import { isUniqueViolation, Prisma, type Db } from '@qa-hub/db';
+import { isUniqueViolation, Prisma, type Db } from '@beacon/db';
 import {
   isHostAllowed,
   newId,
@@ -10,8 +10,8 @@ import {
   type Page,
   type Scan,
   type ScanDetail,
-} from '@qa-hub/shared';
-import { assertPublicUrl, UrlBlockedError, type HostResolver } from '@qa-hub/net';
+} from '@beacon/shared';
+import { assertPublicUrl, UrlBlockedError, type HostResolver } from '@beacon/net';
 import type { ApiConfig } from '../config.js';
 import { ApiError, notFound } from '../lib/errors.js';
 import { paginateById } from '../lib/pagination.js';

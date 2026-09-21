@@ -1,5 +1,5 @@
 {
-  "name": "@qa-hub/net",
+  "name": "@beacon/net",
   "version": "0.1.0",
   "private": true,
   "type": "module",

@@ -12,8 +12,8 @@ import {
 } from './forms-plan.js';
 import type { Check, CheckContext, IssueDraft, SnapForm } from './types.js';
 
-/** Header added to the requests QA Hub makes when it submits a form, so owners can filter them. */
-export const TEST_HEADER = 'x-qahub-test';
+/** Header added to the requests Beacon makes when it submits a form, so owners can filter them. */
+export const TEST_HEADER = 'x-beacon-test';
 
 const READ_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 const SETTLE_MS = 700;
@@ -375,7 +375,7 @@ async function testSubmission(
           {
             rule: 'forms.unfilled',
             severity: 'info',
-            message: `QA Hub could not fill in every required field with test data (${Math.max(invalid, invalidBefore)} still invalid), so the form was not submitted.`,
+            message: `Beacon could not fill in every required field with test data (${Math.max(invalid, invalidBefore)} still invalid), so the form was not submitted.`,
             ...target,
             evidence: { invalidFields: Math.max(invalid, invalidBefore) },
           },

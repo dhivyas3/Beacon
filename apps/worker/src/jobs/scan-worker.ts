@@ -1,6 +1,6 @@
-import type { Db } from '@qa-hub/db';
-import { QUEUES, type ScanJobData } from '@qa-hub/shared';
-import type { Storage } from '@qa-hub/storage';
+import type { Db } from '@beacon/db';
+import { QUEUES, type ScanJobData } from '@beacon/shared';
+import type { Storage } from '@beacon/storage';
 import { Worker } from 'bullmq';
 import type { Redis } from 'ioredis';
 import type { WorkerConfig } from '../config.js';

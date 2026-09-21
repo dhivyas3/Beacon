@@ -26,7 +26,7 @@ const PASSWORD = 'postgres';
 export async function startEmbeddedPostgres(options: StartPostgresOptions = {}): Promise<PgServer> {
   const port = options.port ?? (await freePort());
   const persistent = options.dataDir !== undefined;
-  const databaseDir = options.dataDir ?? mkdtempSync(join(tmpdir(), 'qa-hub-pg-'));
+  const databaseDir = options.dataDir ?? mkdtempSync(join(tmpdir(), 'beacon-pg-'));
 
   const server = new EmbeddedPostgres({
     databaseDir,

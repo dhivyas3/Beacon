@@ -1,4 +1,4 @@
-import { SCOPES, type ApiKey, type CreatedApiKey, type Scope } from '@qa-hub/shared';
+import { SCOPES, type ApiKey, type CreatedApiKey, type Scope } from '@beacon/shared';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AlertTriangle, KeyRound, Plus, Trash2 } from 'lucide-react';
 import { useState, type FormEvent } from 'react';
@@ -70,7 +70,7 @@ function CreateKeyDialog({
         {created ? (
           <div className="mt-4 space-y-4">
             <Alert tone="warning" title="This is the only time the key is shown">
-              Store it now. QA Hub keeps only a fingerprint, so a lost key cannot be recovered.
+              Store it now. Beacon keeps only a fingerprint, so a lost key cannot be recovered.
               Create a new one instead.
             </Alert>
             <div>

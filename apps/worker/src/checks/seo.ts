@@ -1,4 +1,4 @@
-import { matchesStagingPattern } from '@qa-hub/shared';
+import { matchesStagingPattern } from '@beacon/shared';
 import type { Check, CheckContext, DomSnapshot, FinalizeContext, IssueDraft } from './types.js';
 
 /** Longer titles are cut off in search results. Short ones are not flagged: "Contact" is fine. */

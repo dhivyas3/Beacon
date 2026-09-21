@@ -1,4 +1,4 @@
-import { CommonEnvSchema, parseEnv } from '@qa-hub/shared';
+import { CommonEnvSchema, parseEnv } from '@beacon/shared';
 import { z } from 'zod';
 
 const booleanFromString = z

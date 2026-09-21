@@ -1,4 +1,4 @@
-import { screenshotKey, type Storage } from '@qa-hub/storage';
+import { screenshotKey, type Storage } from '@beacon/storage';
 import type { Page } from 'playwright';
 import { captureHighlighted } from './browser.js';
 import type { ScreenshotRequest } from './issue-writer.js';

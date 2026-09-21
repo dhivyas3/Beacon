@@ -31,9 +31,9 @@ export function WebhooksSection() {
         <div>
           <CardTitle>Webhook signing secret</CardTitle>
           <CardDescription>
-            When a scan finishes, QA Hub posts to the scan&apos;s{' '}
+            When a scan finishes, Beacon posts to the scan&apos;s{' '}
             <code className="text-xs">callbackUrl</code> with an{' '}
-            <code className="text-xs">X-QAHub-Signature: sha256=&lt;hmac&gt;</code> header. Your
+            <code className="text-xs">X-Beacon-Signature: sha256=&lt;hmac&gt;</code> header. Your
             receiver recomputes the HMAC-SHA256 of the raw body with this secret and compares.
           </CardDescription>
         </div>

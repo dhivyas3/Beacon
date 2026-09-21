@@ -5,7 +5,7 @@ import { EmptyState } from '@/components/ui/states';
 import { useDocumentTitle } from '@/lib/use-document-title';
 
 export function NotFoundPage() {
-  useDocumentTitle('Page not found · QA Hub');
+  useDocumentTitle('Page not found · Beacon');
   return (
     <EmptyState
       icon={Compass}

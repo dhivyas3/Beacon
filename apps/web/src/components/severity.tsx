@@ -1,4 +1,4 @@
-import { CHECK_LABELS, type CheckType, type ComparisonLabel, type Severity } from '@qa-hub/shared';
+import { CHECK_LABELS, type CheckType, type ComparisonLabel, type Severity } from '@beacon/shared';
 import { Info, OctagonAlert, TriangleAlert } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/cn';

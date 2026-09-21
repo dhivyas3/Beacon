@@ -1,5 +1,5 @@
 {
-  "name": "@qa-hub/testkit",
+  "name": "@beacon/testkit",
   "version": "0.1.0",
   "private": true,
   "type": "module",

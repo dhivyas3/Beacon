@@ -55,11 +55,11 @@ A wildcard allowed-domain entry matches every subdomain and the apex, so one ent
 ## 2026-09-20 Prefixed IDs are generated in application code
 
 Prisma cannot call a custom generator, so every `create` passes `id: newId('scn')` from
-`@qa-hub/shared`. Prefixes: `usr`, `ses`, `key`, `dom`, `scn`, `pg`, `iss`, `chk`, `whd`.
+`@beacon/shared`. Prefixes: `usr`, `ses`, `key`, `dom`, `scn`, `pg`, `iss`, `chk`, `whd`.
 
 ## 2026-09-20 Local development without Docker
 
-The bootstrap machine has no Docker. `@qa-hub/testkit` and `pnpm dev:services` start an
+The bootstrap machine has no Docker. `@beacon/testkit` and `pnpm dev:services` start an
 embedded Postgres and a `redis-server` binary when `DATABASE_URL` / `REDIS_URL` are not set.
 Docker Compose remains the canonical way to run the product and CI uses service containers.
 The embedded Postgres is version 16 to match production.
@@ -196,7 +196,7 @@ Discovery pulls `<a href>` values with a regular expression after removing scrip
 
 ## 2026-09-20 Identifiable user agent everywhere
 
-All HTTP requests send `QAHubBot/1.0 (website QA scan)`. Chromium keeps its normal user agent string and appends `QAHubBot/1.0`, so sites that sniff for browser features still work.
+All HTTP requests send `BeaconBot/1.0 (website health monitor)`. Chromium keeps its normal user agent string and appends `BeaconBot/1.0`, so sites that sniff for browser features still work.
 
 ## 2026-09-20 Web: polling now, server-sent events later
 
@@ -252,7 +252,7 @@ A newsletter box in every footer would otherwise be submitted once per page. A f
 
 ## 2026-09-21 Forms: test data and traceability
 
-Test data is obviously artificial ("QA Hub Test", the configured test email, "This is an automated test from QA Hub. Please ignore it."). Only required fields, email fields and name or message fields are filled. Submissions carry `X-QAHub-Test: form-submission`, added only to writes to the site's own origin and the form's action origin so third-party scripts are not disturbed. The header is the supported way for a site owner to filter or reject test traffic.
+Test data is obviously artificial ("Beacon Test", the configured test email, "This is an automated test from Beacon. Please ignore it."). Only required fields, email fields and name or message fields are filled. Submissions carry `X-Beacon-Test: form-submission`, added only to writes to the site's own origin and the form's action origin so third-party scripts are not disturbed. The header is the supported way for a site owner to filter or reject test traffic.
 
 ## 2026-09-21 Forms: severity
 

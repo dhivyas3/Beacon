@@ -1,4 +1,4 @@
-import { normalizeUrl } from '@qa-hub/shared';
+import { normalizeUrl } from '@beacon/shared';
 import type { UrlCheckResult } from '../http/url-checker.js';
 import type { Check, CheckContext, FinalizeContext, IssueDraft, LinkCandidate } from './types.js';
 

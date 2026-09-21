@@ -3,9 +3,9 @@ import cookie from '@fastify/cookie';
 import rateLimit from '@fastify/rate-limit';
 import swagger from '@fastify/swagger';
 import swaggerUi from '@fastify/swagger-ui';
-import type { Db } from '@qa-hub/db';
-import type { HostResolver } from '@qa-hub/net';
-import { LocalStorage, type Storage } from '@qa-hub/storage';
+import type { Db } from '@beacon/db';
+import type { HostResolver } from '@beacon/net';
+import { LocalStorage, type Storage } from '@beacon/storage';
 import Fastify, { type FastifyInstance } from 'fastify';
 import {
   jsonSchemaTransform,
@@ -110,10 +110,10 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
     openapi: {
       openapi: '3.1.0',
       info: {
-        title: 'QA Hub API',
+        title: 'Beacon API',
         version: '1.0.0',
         description: [
-          'Validate live websites after launch. Start a scan, poll or stream its progress, and read the report.',
+          'Keep watch on the health of your websites. Register a website to have it checked on a schedule, or start a one-off scan of any allowed site, then poll its progress and read the report.',
           '',
           'Authenticate with `Authorization: Bearer <api key>`. Create keys in Settings. The dashboard uses a session cookie instead.',
           '',
@@ -132,8 +132,13 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
       ],
       components: {
         securitySchemes: {
-          bearerAuth: { type: 'http', scheme: 'bearer', description: 'An API key: `qah_...`.' },
-          cookieAuth: { type: 'apiKey', in: 'cookie', name: 'qa_session' },
+          bearerAuth: {
+            type: 'http',
+            scheme: 'bearer',
+            description:
+              'An API key: `bcn_...`. Keys created before the rename (`qah_...`) still work.',
+          },
+          cookieAuth: { type: 'apiKey', in: 'cookie', name: 'beacon_session' },
         },
       },
       security: [{ bearerAuth: [] }, { cookieAuth: [] }],

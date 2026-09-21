@@ -1,12 +1,12 @@
 # Fixture site
 
-A small site that deliberately contains every defect QA Hub looks for. Tests start it in-process with `startFixtureSite()`. To run it by hand:
+A small site that deliberately contains every defect Beacon looks for. Tests start it in-process with `startFixtureSite()`. To run it by hand:
 
 ```bash
-pnpm --filter @qa-hub/fixtures serve   # http://127.0.0.1:4010, external site on :4011
+pnpm --filter @beacon/fixtures serve   # http://127.0.0.1:4010, external site on :4011
 ```
 
-Scan it with `ALLOW_LOCAL_TARGETS=true` and `127.0.0.1` on the allowed domains list. It is never reachable from the public internet, and QA Hub refuses to scan private addresses unless that test-only override is set.
+Scan it with `ALLOW_LOCAL_TARGETS=true` and `127.0.0.1` on the allowed domains list. It is never reachable from the public internet, and Beacon refuses to scan private addresses unless that test-only override is set.
 
 | Path | What is wrong or notable |
 | --- | --- |

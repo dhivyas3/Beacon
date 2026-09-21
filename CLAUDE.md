@@ -1,4 +1,4 @@
-# QA Hub - working notes for Claude Code
+# Beacon - working notes for Claude Code
 
 Read `docs/PLAN.md` for the phase plan and `docs/DECISIONS.md` for decisions already made.
 Do not re-litigate decisions; append a new entry if you must change one.
@@ -31,11 +31,11 @@ pnpm dev:services            # embedded Postgres (5432) + Redis (6379) without D
 pnpm db:migrate              # prisma migrate deploy
 pnpm db:migrate:dev --name x # create a new migration (needs a running Postgres)
 pnpm db:seed                 # create the first admin from SEED_ADMIN_* env vars
-pnpm --filter @qa-hub/fixtures serve   # run the fixture site by hand on :4010
+pnpm --filter @beacon/fixtures serve   # run the fixture site by hand on :4010
 docker compose up --build    # full system: postgres, redis, api, worker, web (http://localhost:8080)
 ```
 
-Tests that need infrastructure use `@qa-hub/testkit`: if `DATABASE_URL` / `REDIS_URL` are set
+Tests that need infrastructure use `@beacon/testkit`: if `DATABASE_URL` / `REDIS_URL` are set
 they are used (CI does this with service containers); otherwise an embedded Postgres and a
 local `redis-server` (from `PATH` or `REDIS_SERVER_BIN`) are started on random ports.
 
@@ -43,13 +43,13 @@ local `redis-server` (from `PATH` or `REDIS_SERVER_BIN`) are started on random p
 
 - The API contract lives in `packages/shared/src/schemas/*`. Never define a request/response
   shape anywhere else. Fastify routes reference these schemas so OpenAPI stays accurate.
-- All IDs are prefixed nanoids from `newId('scn')` in `@qa-hub/shared` (`usr_`, `ses_`,
+- All IDs are prefixed nanoids from `newId('scn')` in `@beacon/shared` (`usr_`, `ses_`,
   `key_`, `dom_`, `scn_`, `pg_`, `iss_`, `chk_`, `whd_`).
 - All API errors are `{ error: { code, message, details? } }`. Throw `ApiError` from
   `apps/api/src/lib/errors.ts`; the global error handler maps it to the envelope.
 - Every route declares `config: { auth: ... }` (a scope such as `scans:read`, `admin`,
   `session`, or `false`). The auth plugin enforces it. No route is public by accident.
-- Outbound HTTP from api/worker goes through `@qa-hub/net` (`safeFetch`). Never call
+- Outbound HTTP from api/worker goes through `@beacon/net` (`safeFetch`). Never call
   `fetch`/`undici.request` directly against user-supplied URLs.
 - Checks implement `Check` from `apps/worker/src/checks/types.ts` and are registered in
   `apps/worker/src/checks/index.ts`. One file per check. Tests run each check against
@@ -76,6 +76,6 @@ local `redis-server` (from `PATH` or `REDIS_SERVER_BIN`) are started on random p
 
 This repo was bootstrapped on Windows without Docker. `pnpm dev:services` and the test kit
 use `embedded-postgres` and `redis-server` from `REDIS_SERVER_BIN` (see `.env.example`).
-Playwright needs `pnpm --filter @qa-hub/worker exec playwright install chromium` once.
+Playwright needs `pnpm --filter @beacon/worker exec playwright install chromium` once.
 
 On Windows a running api or worker holds the Prisma query engine open, so `prisma generate` (part of `pnpm build` and `pnpm dev`) fails with `EPERM: operation not permitted, rename ...query_engine`. Stop the running api and worker, then rebuild.

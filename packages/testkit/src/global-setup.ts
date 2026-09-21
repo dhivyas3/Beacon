@@ -1,8 +1,8 @@
 import { prepareTemplateDatabase, startEmbeddedPostgres } from './postgres.js';
 import { startRedis } from './redis.js';
 
-export const ENV_PG_ADMIN_URL = 'QA_TEST_PG_ADMIN_URL';
-export const ENV_REDIS_URL = 'QA_TEST_REDIS_URL';
+export const ENV_PG_ADMIN_URL = 'BEACON_TEST_PG_ADMIN_URL';
+export const ENV_REDIS_URL = 'BEACON_TEST_REDIS_URL';
 
 /**
  * Vitest global setup. Provides a PostgreSQL server and a Redis server for the whole run.

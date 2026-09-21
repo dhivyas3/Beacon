@@ -13,7 +13,7 @@ import {
   type Page,
   type ScanDetail,
   type ScanStatus,
-} from '@qa-hub/shared';
+} from '@beacon/shared';
 import { api, type IssueFilters, type PageFilters, type ScanListFilters } from './client';
 
 /** Polling rhythm. Active scans update every second, an idle list refreshes now and then. */

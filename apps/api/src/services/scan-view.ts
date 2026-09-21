@@ -1,11 +1,11 @@
-import type { Db, Prisma } from '@qa-hub/db';
+import type { Db, Prisma } from '@beacon/db';
 import {
   computeProgress,
   type ComparisonLabel,
   type Issue,
   type Scan,
   type ScanStage,
-} from '@qa-hub/shared';
+} from '@beacon/shared';
 
 export const scanInclude = {
   triggeredByUser: { select: { id: true, name: true } },

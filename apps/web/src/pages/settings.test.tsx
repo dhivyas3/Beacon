@@ -17,14 +17,14 @@ describe('API keys', () => {
       ...base(),
       'GET /api-keys': () => ({
         items: [
-          apiKey({ id: 'key_1', name: 'n8n production', prefix: 'qah_7Hk2mP9x' }),
+          apiKey({ id: 'key_1', name: 'n8n production', prefix: 'bcn_7Hk2mP9x' }),
           apiKey({
             id: 'key_2',
             name: 'Old CI',
-            prefix: 'qah_Old1',
+            prefix: 'bcn_Old1',
             revokedAt: '2026-09-10T09:00:00.000Z',
           }),
-          apiKey({ id: 'key_3', name: 'Fresh', prefix: 'qah_Frs2', lastUsedAt: null }),
+          apiKey({ id: 'key_3', name: 'Fresh', prefix: 'bcn_Frs2', lastUsedAt: null }),
         ],
       }),
     });
@@ -33,7 +33,7 @@ describe('API keys', () => {
     expect(
       within(table).getByText('n8n production', { selector: 'span.font-medium' }),
     ).toBeInTheDocument();
-    expect(within(table).getByText('qah_7Hk2mP9x…')).toBeInTheDocument();
+    expect(within(table).getByText('bcn_7Hk2mP9x…')).toBeInTheDocument();
     expect(within(table).getAllByText('scans:write').length).toBeGreaterThan(0);
     expect(within(table).getByText('Revoked')).toBeInTheDocument();
     expect(within(table).getByText('Never')).toBeInTheDocument();
@@ -59,10 +59,10 @@ describe('API keys', () => {
           id: 'key_new',
           name: body.name,
           scopes: body.scopes as never,
-          prefix: 'qah_Zz9',
+          prefix: 'bcn_Zz9',
         });
         items = [created, ...items];
-        return { status: 201, body: { ...created, key: 'qah_Zz9SECRETSECRETSECRET' } };
+        return { status: 201, body: { ...created, key: 'bcn_Zz9SECRETSECRETSECRET' } };
       },
     });
     const user = userEvent.setup();
@@ -87,10 +87,10 @@ describe('API keys', () => {
 
     const shown = await screen.findByRole('dialog', { name: 'Copy your new API key' });
     expect(within(shown).getByText('This is the only time the key is shown')).toBeInTheDocument();
-    expect(within(shown).getByLabelText('API key')).toHaveValue('qah_Zz9SECRETSECRETSECRET');
+    expect(within(shown).getByLabelText('API key')).toHaveValue('bcn_Zz9SECRETSECRETSECRET');
 
     await user.click(within(shown).getByRole('button', { name: 'Copy' }));
-    await waitFor(() => expect(writeText).toHaveBeenCalledWith('qah_Zz9SECRETSECRETSECRET'));
+    await waitFor(() => expect(writeText).toHaveBeenCalledWith('bcn_Zz9SECRETSECRETSECRET'));
 
     await user.click(within(shown).getByRole('button', { name: 'I have saved it' }));
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
@@ -276,7 +276,7 @@ describe('webhook secret', () => {
     const field = await screen.findByLabelText('Webhook signing secret');
     expect(field).toHaveValue('••••••••cdef');
     expect(api.callsTo('GET', '/settings/webhook-secret')).toHaveLength(0);
-    expect(screen.getByText(/X-QAHub-Signature/)).toBeInTheDocument();
+    expect(screen.getByText(/X-Beacon-Signature/)).toBeInTheDocument();
 
     await user.click(screen.getByRole('button', { name: 'Reveal' }));
     await waitFor(() => expect(field).toHaveValue('whsec_full_secret_value'));

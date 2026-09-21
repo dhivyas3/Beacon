@@ -1,4 +1,4 @@
-import { formatDuration, type ScanDetail } from '@qa-hub/shared';
+import { formatDuration, type ScanDetail } from '@beacon/shared';
 import { Activity, Gauge, Hourglass, Timer } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useIssueFeed } from '@/api/hooks';

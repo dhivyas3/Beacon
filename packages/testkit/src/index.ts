@@ -13,7 +13,7 @@ export function testRedisUrl(): string {
   const url = process.env[ENV_REDIS_URL];
   if (!url) {
     throw new Error(
-      'No Redis test server. Add "@qa-hub/testkit/global-setup" to vitest globalSetup.',
+      'No Redis test server. Add "@beacon/testkit/global-setup" to vitest globalSetup.',
     );
   }
   return url;
@@ -29,7 +29,7 @@ export async function createIsolatedDatabase(): Promise<TestDatabase> {
   const adminUrl = process.env[ENV_PG_ADMIN_URL];
   if (!adminUrl) {
     throw new Error(
-      'No Postgres test server. Add "@qa-hub/testkit/global-setup" to vitest globalSetup.',
+      'No Postgres test server. Add "@beacon/testkit/global-setup" to vitest globalSetup.',
     );
   }
   const url = await createTestDatabase(adminUrl);
@@ -38,5 +38,5 @@ export async function createIsolatedDatabase(): Promise<TestDatabase> {
 
 /** A key prefix that keeps BullMQ queues from different test files apart. */
 export function uniquePrefix(label = 'test'): string {
-  return `qahub:${label}:${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
+  return `beacon:${label}:${Date.now().toString(36)}${Math.random().toString(36).slice(2, 8)}`;
 }

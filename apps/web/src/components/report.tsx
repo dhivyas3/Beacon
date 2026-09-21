@@ -6,7 +6,7 @@ import {
   type ScanDetail,
   type ScanPage,
   type Severity,
-} from '@qa-hub/shared';
+} from '@beacon/shared';
 import { Check, ChevronDown, FileText, ShieldCheck } from 'lucide-react';
 import { useState } from 'react';
 import type { IssueFilters, PageFilters } from '@/api/client';

@@ -1,4 +1,4 @@
-import type { Db } from '@qa-hub/db';
+import type { Db } from '@beacon/db';
 import type { Logger } from './logger.js';
 
 /** A scan with no heartbeat for this long is considered dead. */

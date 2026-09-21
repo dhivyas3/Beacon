@@ -31,8 +31,10 @@ export const CreatedApiKeySchema = ApiKeySchema.extend({
   key: z.string().describe('The raw key. Returned exactly once, on creation.'),
 }).meta({
   id: 'CreatedApiKey',
-  example: { ...EXAMPLE_API_KEY, key: 'qah_7Hk2mP9xRt4Vb8Nc1Zq6Ld3Sf5Wj0YaGe2UoIiKpXhM' },
+  example: { ...EXAMPLE_API_KEY, key: 'bcn_7Hk2mP9xRt4Vb8Nc1Zq6Ld3Sf5Wj0YaGe2UoIiKpXhM' },
 });
 export type CreatedApiKey = z.infer<typeof CreatedApiKeySchema>;
 
-export const API_KEY_PREFIX = 'qah_';
+export const API_KEY_PREFIX = 'bcn_';
+/** Keys created before the product was renamed. They are still accepted. */
+export const LEGACY_API_KEY_PREFIXES = ['qah_'] as const;

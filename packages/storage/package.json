@@ -1,5 +1,5 @@
 {
-  "name": "@qa-hub/storage",
+  "name": "@beacon/storage",
   "version": "0.1.0",
   "private": true,
   "type": "module",

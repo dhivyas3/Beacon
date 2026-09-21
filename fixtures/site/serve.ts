@@ -1,6 +1,6 @@
 import { startExternalSite, startFixtureSite } from './server.js';
 
-/** `pnpm --filter @qa-hub/fixtures serve`: run the fixture site by hand at http://127.0.0.1:4010. */
+/** `pnpm --filter @beacon/fixtures serve`: run the fixture site by hand at http://127.0.0.1:4010. */
 const external = await startExternalSite({ port: 4011 });
 const site = await startFixtureSite({ port: 4010, externalUrl: external.url });
 

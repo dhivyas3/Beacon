@@ -1,4 +1,4 @@
-import { freePort } from '@qa-hub/testkit';
+import { freePort } from '@beacon/testkit';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import type { LoadedPage } from '../scan/browser.js';
 import { BrowserSession, captureHighlighted } from '../scan/browser.js';
@@ -125,14 +125,14 @@ describe('page loading', () => {
     }
   });
 
-  it('identifies itself as QAHubBot in its user agent', async () => {
+  it('identifies itself as BeaconBot in its user agent', async () => {
     sites.site.reset();
     const loaded = await browser.load(`${sites.site.url}/about`, signal);
     await loaded.close();
     const agents = sites.site.requests.map((request) => request.userAgent);
     expect(agents.length).toBeGreaterThan(0);
     expect(
-      agents.every((agent) => agent.includes('QAHubBot/1.0') && agent.includes('Chrome')),
+      agents.every((agent) => agent.includes('BeaconBot/1.0') && agent.includes('Chrome')),
     ).toBe(true);
   });
 

@@ -53,7 +53,7 @@ describe('API key management', () => {
     const res = await createKey(['scans:read'], 'ci pipeline');
     expect(res.statusCode).toBe(201);
     const body = res.json<{ id: string; key: string; prefix: string; scopes: string[] }>();
-    expect(body.key).toMatch(/^qah_[A-Za-z0-9_-]{43}$/);
+    expect(body.key).toMatch(/^bcn_[A-Za-z0-9_-]{43}$/);
     expect(body.prefix).toBe(body.key.slice(0, 12));
     expect(body.scopes).toEqual(['scans:read']);
 
@@ -135,9 +135,21 @@ describe('API key authentication', () => {
       .not.toBeNull();
   });
 
+  it('still accepts keys created before the rename, which start with qah_', async () => {
+    const { id, key } = (await createKey()).json<{ id: string; key: string }>();
+    const legacy = `qah_${key.slice('bcn_'.length)}`;
+    await ctx.db.apiKey.update({ where: { id }, data: { keyHash: sha256(legacy) } });
+    const res = await ctx.app.inject({
+      method: 'GET',
+      url: '/api/v1/scans',
+      headers: bearer(legacy),
+    });
+    expect(res.statusCode).toBe(200);
+  });
+
   it('rejects unknown keys, malformed headers and non-key tokens', async () => {
     for (const authorization of [
-      'Bearer qah_thisisnotarealkey',
+      'Bearer bcn_thisisnotarealkey',
       'Bearer something-else',
       'Basic dXNlcjpwYXNz',
       'Bearer',
@@ -156,7 +168,7 @@ describe('API key authentication', () => {
     const res = await ctx.app.inject({
       method: 'GET',
       url: '/api/v1/scans',
-      headers: { authorization: 'Bearer qah_bad', cookie: admin },
+      headers: { authorization: 'Bearer bcn_bad', cookie: admin },
     });
     expect(res.statusCode).toBe(401);
   });

@@ -1,5 +1,5 @@
-import { USER_AGENT } from '@qa-hub/shared';
-import { assertPublicUrl, type HostResolver } from '@qa-hub/net';
+import { USER_AGENT } from '@beacon/shared';
+import { assertPublicUrl, type HostResolver } from '@beacon/net';
 import { chromium, type Browser, type BrowserContext, type Page, type Request } from 'playwright';
 import type { ConsoleEntry, DomSnapshot, NetworkEntry, PageObservation } from '../checks/types.js';
 import { SCROLL_SCRIPT, SNAPSHOT_SCRIPT } from './snapshot-script.js';

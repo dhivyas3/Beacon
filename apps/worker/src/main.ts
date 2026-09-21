@@ -1,5 +1,5 @@
-import { createDb } from '@qa-hub/db';
-import { LocalStorage } from '@qa-hub/storage';
+import { createDb } from '@beacon/db';
+import { LocalStorage } from '@beacon/storage';
 import { Queue, Worker } from 'bullmq';
 import { Redis } from 'ioredis';
 import { loadConfig } from './config.js';

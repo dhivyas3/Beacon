@@ -1,4 +1,4 @@
-import { CommonEnvSchema, parseEnv } from '@qa-hub/shared';
+import { CommonEnvSchema, parseEnv } from '@beacon/shared';
 import type { z } from 'zod';
 
 export const WorkerEnvSchema = CommonEnvSchema;

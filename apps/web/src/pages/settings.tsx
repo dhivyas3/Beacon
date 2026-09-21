@@ -19,7 +19,7 @@ const TABS = [
 ] as const;
 
 export function SettingsPage() {
-  useDocumentTitle('Settings · QA Hub');
+  useDocumentTitle('Settings · Beacon');
   const session = useSession();
   const isAdmin = session.data?.user.role === 'admin';
   const [tab, setTab] = useState<(typeof TABS)[number]['value']>(isAdmin ? 'keys' : 'defaults');

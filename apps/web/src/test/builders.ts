@@ -10,7 +10,7 @@ import type {
   ScanPage,
   SessionResponse,
   Settings,
-} from '@qa-hub/shared';
+} from '@beacon/shared';
 
 export function progress(overrides: Partial<Progress> = {}): Progress {
   return {
@@ -168,7 +168,7 @@ export function apiKey(overrides: Partial<ApiKey> = {}): ApiKey {
   return {
     id: nextId('key'),
     name: 'n8n production',
-    prefix: 'qah_7Hk2mP9x',
+    prefix: 'bcn_7Hk2mP9x',
     scopes: ['scans:read', 'scans:write'],
     createdAt: '2026-09-01T09:00:00.000Z',
     lastUsedAt: '2026-09-18T10:00:00.000Z',

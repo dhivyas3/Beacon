@@ -104,7 +104,7 @@ export const TRACKING_PARAMS = [
   '_gl',
 ] as const;
 
-export const USER_AGENT = 'QAHubBot/1.0 (website QA scan)';
+export const USER_AGENT = 'BeaconBot/1.0 (website health monitor)';
 
 export const PROGRESS_WEIGHTS = {
   discoveryEnd: 5,

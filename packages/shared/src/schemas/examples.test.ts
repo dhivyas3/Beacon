@@ -25,7 +25,7 @@ describe('OpenAPI examples stay valid', () => {
   });
 
   it('CreatedApiKey example includes the raw key', () => {
-    const parsed = CreatedApiKeySchema.safeParse({ ...EXAMPLE_API_KEY, key: 'qah_abc' });
+    const parsed = CreatedApiKeySchema.safeParse({ ...EXAMPLE_API_KEY, key: 'bcn_abc' });
     expect(parsed.success).toBe(true);
   });
 });

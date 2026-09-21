@@ -6,7 +6,7 @@ import {
   smoothEta,
   type Progress,
   type ScanStatus,
-} from '@qa-hub/shared';
+} from '@beacon/shared';
 import { useEffect, useRef, useState } from 'react';
 import { ProgressBar, type ProgressTone } from '@/components/ui/progress-bar';
 import { cn } from '@/lib/cn';

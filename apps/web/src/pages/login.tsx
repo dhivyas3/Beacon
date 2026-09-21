@@ -16,7 +16,7 @@ function safeNext(value: string | null): string {
 }
 
 export function LoginPage() {
-  useDocumentTitle('Sign in · QA Hub');
+  useDocumentTitle('Sign in · Beacon');
   const [params] = useSearchParams();
   const navigate = useNavigate();
   const client = useQueryClient();
@@ -47,10 +47,8 @@ export function LoginPage() {
       <div className="mb-8 flex flex-col items-center gap-3">
         <Logo className="size-11" />
         <div className="text-center">
-          <h1 className="text-xl font-semibold text-fg">Sign in to QA Hub</h1>
-          <p className="mt-1 text-[13px] text-muted">
-            Check live sites for broken things after launch.
-          </p>
+          <h1 className="text-xl font-semibold text-fg">Sign in to Beacon</h1>
+          <p className="mt-1 text-[13px] text-muted">Keep watch on the health of your websites.</p>
         </div>
       </div>
       <Card className="w-full max-w-sm">
