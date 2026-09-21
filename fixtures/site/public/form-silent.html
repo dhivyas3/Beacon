@@ -1,0 +1,32 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Form with no confirmation</title>
+    <meta name="description" content="Fixture page: Form with no confirmation." />
+    <link rel="canonical" href="{{ORIGIN}}/form-silent" />
+    <meta property="og:title" content="Form with no confirmation" />
+    <meta property="og:description" content="Form with no confirmation." />
+    <meta property="og:image" content="{{ORIGIN}}/images/ok.svg" />
+  </head>
+  <body>
+    <main>
+      <h1>Form with no confirmation</h1>
+      <form id="f" action="/api/forms/silent" method="post">
+        <label>Name <input type="text" name="name" required /></label>
+        <label>Email <input type="email" name="email" required /></label>
+        <button type="submit">Send</button>
+      </form>
+      <p><a href="/">Home</a></p>
+    </main>
+    <script>
+      var form = document.getElementById("f");
+      form.addEventListener("submit", function (event) {
+        event.preventDefault();
+        fetch(form.action, { method: "POST", body: new FormData(form) }).then(function (response) {
+          form.reset();
+        });
+      });
+    </script>
+  </body>
+</html>

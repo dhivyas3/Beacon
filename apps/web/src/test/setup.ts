@@ -1,6 +1,6 @@
 import '@testing-library/jest-dom/vitest';
 import { cleanup, configure } from '@testing-library/react';
-import { afterEach, beforeEach, vi } from 'vitest';
+import { afterEach, beforeAll, beforeEach, vi } from 'vitest';
 
 // Pages are loaded lazily, and the first load compiles them, which is slow when packages run in parallel.
 configure({ asyncUtilTimeout: 5000 });
@@ -12,6 +12,12 @@ afterEach(() => {
   localStorage.clear();
   document.documentElement.removeAttribute('data-theme');
 });
+
+// The app loads these pages on demand. Loading them once up front keeps the first test that
+// navigates to one from paying for compiling it, which is slow when packages test in parallel.
+beforeAll(async () => {
+  await Promise.all([import('@/pages/scan'), import('@/pages/settings')]);
+}, 60_000);
 
 beforeEach(() => {
   // jsdom lacks these browser APIs, which Radix, Recharts and the theme code use.

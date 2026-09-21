@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Form whose button does nothing</title>
+    <meta name="description" content="Fixture page: Form whose button does nothing." />
+    <link rel="canonical" href="{{ORIGIN}}/form-dead" />
+    <meta property="og:title" content="Form whose button does nothing" />
+    <meta property="og:description" content="Form whose button does nothing." />
+    <meta property="og:image" content="{{ORIGIN}}/images/ok.svg" />
+  </head>
+  <body>
+    <main>
+      <h1>Form whose button does nothing</h1>
+      <form id="f" action="/api/forms/good" method="post">
+        <label>Name <input type="text" name="name" required /></label>
+        <label>Email <input type="email" name="email" required /></label>
+        <button type="submit">Send</button>
+      </form>
+      <p><a href="/">Home</a></p>
+    </main>
+    <script>
+      document.getElementById("f").addEventListener("submit", function (event) { event.preventDefault(); });
+    </script>
+  </body>
+</html>

@@ -10,8 +10,6 @@ import { useEffect, useState, type FormEvent } from 'react';
 import { toast } from 'sonner';
 import { api } from '@/api/client';
 import { keys, useSettings } from '@/api/hooks';
-import { UNAVAILABLE_CHECKS } from '@/components/new-scan-form';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -98,7 +96,6 @@ export function DefaultsSection({ canEdit }: { canEdit: boolean }) {
                 <legend className="text-[13px] font-medium text-fg">Checks</legend>
                 <div className="mt-2 grid gap-2 sm:grid-cols-2">
                   {CHECK_TYPES.map((check) => {
-                    const unavailable = UNAVAILABLE_CHECKS.includes(check);
                     return (
                       <div key={check} className="flex items-center gap-2.5">
                         <Checkbox
@@ -115,7 +112,6 @@ export function DefaultsSection({ canEdit }: { canEdit: boolean }) {
                         <Label htmlFor={`default-${check}`} className="font-normal">
                           {CHECK_LABELS[check]}
                         </Label>
-                        {unavailable ? <Badge tone="outline">Runs when available</Badge> : null}
                       </div>
                     );
                   })}

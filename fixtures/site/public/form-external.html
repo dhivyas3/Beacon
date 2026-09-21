@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Form to another site</title>
+    <meta name="description" content="Fixture page: Form to another site." />
+    <link rel="canonical" href="{{ORIGIN}}/form-external" />
+    <meta property="og:title" content="Form to another site" />
+    <meta property="og:description" content="Form to another site." />
+    <meta property="og:image" content="{{ORIGIN}}/images/ok.svg" />
+  </head>
+  <body>
+    <main>
+      <h1>Form to another site</h1>
+      <form id="f" action="{{EXTERNAL}}/collect" method="post">
+        <label>Name <input type="text" name="name" required /></label>
+        <label>Email <input type="email" name="email" required /></label>
+        <button type="submit">Send</button>
+      </form>
+      <p><a href="/">Home</a></p>
+    </main>
+
+  </body>
+</html>

@@ -1,0 +1,34 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Required fields not enforced</title>
+    <meta name="description" content="Fixture page: required fields are marked but never enforced." />
+    <link rel="canonical" href="{{ORIGIN}}/form-bypass" />
+    <meta property="og:title" content="Required fields not enforced" />
+    <meta property="og:description" content="Fixture." />
+    <meta property="og:image" content="{{ORIGIN}}/images/ok.svg" />
+  </head>
+  <body>
+    <main>
+      <h1>Required fields not enforced</h1>
+      <form id="f" action="/api/forms/good" method="post" novalidate>
+        <label>Name <input type="text" name="name" required /></label>
+        <label>Email <input type="email" name="email" required /></label>
+        <button type="submit">Send</button>
+      </form>
+      <p id="status" role="status"></p>
+      <p><a href="/">Home</a></p>
+    </main>
+    <script>
+      // Marked required, but the script sends the form whatever it contains.
+      var form = document.getElementById("f");
+      form.addEventListener("submit", function (event) {
+        event.preventDefault();
+        fetch(form.action, { method: "POST", body: new FormData(form) }).then(function () {
+          document.getElementById("status").textContent = "Thanks, we got it.";
+        });
+      });
+    </script>
+  </body>
+</html>

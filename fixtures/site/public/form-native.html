@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Form that posts normally</title>
+    <meta name="description" content="Fixture page: Form that posts normally." />
+    <link rel="canonical" href="{{ORIGIN}}/form-native" />
+    <meta property="og:title" content="Form that posts normally" />
+    <meta property="og:description" content="Form that posts normally." />
+    <meta property="og:image" content="{{ORIGIN}}/images/ok.svg" />
+  </head>
+  <body>
+    <main>
+      <h1>Form that posts normally</h1>
+      <form id="f" action="/api/forms/native" method="post">
+        <label>Name <input type="text" name="name" required /></label>
+        <label>Email <input type="email" name="email" required /></label>
+        <button type="submit">Send</button>
+      </form>
+      <p><a href="/">Home</a></p>
+    </main>
+
+  </body>
+</html>

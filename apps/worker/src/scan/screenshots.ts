@@ -23,6 +23,8 @@ export class PageScreenshots {
   ) {}
 
   async forIssue(request: ScreenshotRequest): Promise<string | null> {
+    // A check that took its own screenshot, such as a form's page after it was submitted, wins.
+    if (request.draft.screenshotPng) return this.store(request.id, request.draft.screenshotPng);
     if (request.draft.severity !== 'critical') return null;
     // A stopped scan closes its pages. Do not wait for screenshots of pages that are gone.
     if (this.signal.aborted || this.page.isClosed()) return null;
@@ -38,12 +40,19 @@ export class PageScreenshots {
 
   private async capture(issueId: string, selector: string | null): Promise<string | null> {
     try {
-      const png = await captureHighlighted(this.page, selector);
+      return await this.store(issueId, await captureHighlighted(this.page, selector));
+    } catch {
+      return null; // a failed screenshot must never lose the issue it belongs to
+    }
+  }
+
+  private async store(issueId: string, png: Buffer): Promise<string | null> {
+    try {
       const key = screenshotKey(this.scanId, issueId);
       await this.storage.put(key, png, 'image/png');
       return key;
     } catch {
-      return null; // a failed screenshot must never lose the issue it belongs to
+      return null;
     }
   }
 }

@@ -149,27 +149,55 @@ export const SNAPSHOT_SCRIPT = String.raw`(() => {
   }
 
   // Forms
+  const labelOf = (el) => {
+    const parts = [];
+    if (el.labels) for (const l of Array.from(el.labels)) parts.push(l.textContent || '');
+    const aria = el.getAttribute('aria-label');
+    if (aria) parts.push(aria);
+    return parts.join(' ').trim().replace(/\s+/g, ' ').slice(0, 80);
+  };
+  const numberAttr = (el, name) => {
+    const value = el.getAttribute(name);
+    if (value === null || value === '') return null;
+    const n = Number(value);
+    return Number.isFinite(n) ? n : null;
+  };
+  const captchaSelector = '.g-recaptcha, .h-captcha, .cf-turnstile, [data-sitekey], iframe[src*="recaptcha"], iframe[src*="hcaptcha"], iframe[src*="turnstile"], [class*="captcha" i], [id*="captcha" i]';
   const forms = [];
   for (const form of Array.from(document.forms).slice(0, LIMITS.forms)) {
     const fields = Array.from(form.elements)
-      .filter((el) => ['INPUT', 'SELECT', 'TEXTAREA'].includes(el.tagName) && el.type !== 'hidden' && el.type !== 'submit' && el.type !== 'button')
+      .filter((el) => ['INPUT', 'SELECT', 'TEXTAREA'].includes(el.tagName) && el.type !== 'hidden' && el.type !== 'submit' && el.type !== 'button' && el.type !== 'image' && el.type !== 'reset')
       .map((el) => ({
         tag: el.tagName.toLowerCase(),
         type: el.type || null,
         name: el.getAttribute('name'),
         required: !!el.required,
         selector: cssPath(el),
+        label: labelOf(el),
+        placeholder: attr(el, 'placeholder'),
+        autocomplete: attr(el, 'autocomplete'),
+        pattern: attr(el, 'pattern'),
+        minLength: numberAttr(el, 'minlength'),
+        maxLength: numberAttr(el, 'maxlength'),
+        min: attr(el, 'min'),
+        max: attr(el, 'max'),
+        disabled: !!el.disabled,
+        readOnly: !!el.readOnly,
+        options: el.tagName === 'SELECT' ? Array.from(el.options).map((o) => o.value).filter((v) => v !== '').slice(0, 5) : [],
       }));
-    const hasSubmit = !!form.querySelector('button:not([type]), button[type="submit"], input[type="submit"], input[type="image"]');
+    const submit = form.querySelector('button:not([type]), button[type="submit"], input[type="submit"], input[type="image"]');
     const scope = form.closest('section, div, main') || form;
-    const captchaSelector = '.g-recaptcha, .h-captcha, .cf-turnstile, [data-sitekey], iframe[src*="recaptcha"], iframe[src*="hcaptcha"], iframe[src*="turnstile"], [class*="captcha" i], [id*="captcha" i]';
+    const search = !!(form.closest('[role="search"]') || form.getAttribute('role') === 'search' || form.querySelector('input[type="search"]'));
     forms.push({
       selector: cssPath(form),
       rawAction: attr(form, 'action'),
       action: abs(form.getAttribute('action') || location.href),
       method: (form.getAttribute('method') || 'get').toLowerCase(),
-      hasSubmit: hasSubmit,
+      hasSubmit: !!submit,
+      submitSelector: submit ? cssPath(submit) : null,
+      submitText: submit ? ((submit.textContent || submit.getAttribute('value') || '').trim().replace(/\s+/g, ' ').slice(0, 60)) : '',
       hasCaptcha: !!(form.querySelector(captchaSelector) || scope.querySelector(captchaSelector)),
+      isSearch: search,
       noValidate: form.noValidate,
       fields: fields,
     });

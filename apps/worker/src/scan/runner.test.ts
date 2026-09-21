@@ -322,7 +322,32 @@ describe('a complete scan of the fixture site', () => {
       .map((i) => i.page?.url);
     expect(notInSitemap).toContain(at('/orphan'));
     expect(notInSitemap).not.toContain(at('/about'));
-    expect(seo.every((i) => i.severity === 'warning')).toBe(true);
+    const discovery = seo.filter((i) => ruleOf(i).startsWith('seo.not-in-sitemap'));
+    expect(discovery.every((i) => i.severity === 'warning')).toBe(true);
+  });
+
+  it('checks the SEO basics of every page it scans', async () => {
+    const seo = (await issues()).filter((i) => i.checkType === 'seo');
+    const rulesOn = (path: string) =>
+      seo
+        .filter((i) => i.page?.url === at(path))
+        .map(ruleOf)
+        .filter((rule) => rule !== 'seo.not-in-sitemap')
+        .sort();
+    expect(rulesOn('/no-meta')).toEqual([
+      'seo.canonical-missing',
+      'seo.description-missing',
+      'seo.h1-missing',
+      'seo.lang-missing',
+      'seo.noindex',
+      'seo.og-missing',
+      'seo.title-missing',
+    ]);
+    expect(seo.find((i) => ruleOf(i) === 'seo.noindex')?.severity).toBe('critical');
+    // Complete pages, and pages that share a template but not a title, are clean.
+    expect(rulesOn('/about')).toEqual([]);
+    expect(rulesOn('/products/1')).toEqual([]);
+    expect(seo.some((i) => ruleOf(i).endsWith('-duplicate'))).toBe(false);
   });
 
   it('does not run checks on a page that only redirects', async () => {
@@ -371,6 +396,76 @@ describe('a complete scan of the fixture site', () => {
     expect(all.length).toBeGreaterThan(50);
     expect(all.every((request) => request.userAgent.includes('QAHubBot/1.0'))).toBe(true);
   });
+});
+
+describe('scans that check forms', () => {
+  const formScan = async (formMode: 'detect' | 'validate_only' | 'submit') => {
+    const id = await insertQueuedScan(world.db, `${world.sites.site.url}/`, {
+      checks: ['forms'],
+      formMode,
+    });
+    world.sites.site.reset();
+    await runScan(deps(), id);
+    const issues = await world.db.scanIssue.findMany({
+      where: { scanId: id },
+      include: { page: true },
+    });
+    return { id, issues, submissions: [...world.sites.site.submissions] };
+  };
+
+  it('detect mode never submits anything and finds nothing wrong with the markup', async () => {
+    const { id, issues, submissions } = await formScan('detect');
+    expect((await world.db.scan.findUniqueOrThrow({ where: { id } })).status).toBe('completed');
+    expect(submissions).toEqual([]);
+    expect(issues).toEqual([]);
+  }, 120_000);
+
+  it('validate_only mode reports validation problems but sends nothing at all', async () => {
+    const { issues, submissions } = await formScan('validate_only');
+    expect(submissions).toEqual([]);
+    const found = issues.map((i) => [i.page?.url.replace(world.sites.site.url, ''), ruleOf(i)]);
+    expect(found).toEqual([['/form-broken', 'forms.no-validation']]);
+    expect(issues[0]?.severity).toBe('warning');
+  }, 120_000);
+
+  it('submit mode submits each distinct form once, identifies itself, and reports what breaks', async () => {
+    const { id, issues, submissions } = await formScan('submit');
+    expect(submissions.map((s) => s.path).sort()).toEqual([
+      '/api/forms/500',
+      '/api/forms/broken',
+      '/api/forms/good',
+    ]);
+    expect(submissions.every((s) => s.testHeader === 'form-submission')).toBe(true);
+    expect(submissions.every((s) => s.userAgent.includes('QAHubBot/1.0'))).toBe(true);
+
+    const byPage = (path: string) =>
+      issues
+        .filter((i) => i.page?.url === `${world.sites.site.url}${path}`)
+        .map(ruleOf)
+        .sort();
+    expect(byPage('/form-good')).toEqual([]);
+    expect(byPage('/form-500')).toEqual(['forms.submit-failed']);
+    expect(byPage('/form-broken')).toContain('forms.no-validation');
+
+    const failed = issues.find((i) => ruleOf(i) === 'forms.submit-failed');
+    expect(failed?.severity).toBe('critical');
+    expect(failed?.message).toContain('HTTP 500');
+    expect(failed?.evidence).toMatchObject({ rule: 'forms.submit-failed', httpStatus: 500 });
+    // The screenshot is what visitors saw after submitting, not a highlight of the button.
+    expect(failed?.screenshotPath).toBeTruthy();
+    const stored = await world.storage.get(failed?.screenshotPath as string);
+    expect(stored?.data.subarray(1, 4).toString()).toBe('PNG');
+    // Nothing the check took a picture of is left in the evidence.
+    expect(JSON.stringify(failed?.evidence)).not.toContain('screenshotPng');
+
+    const scan = await world.db.scan.findUniqueOrThrow({ where: { id } });
+    expect(scan.status).toBe('completed');
+    expect(scan.criticalCount).toBe(1);
+    const result = await world.db.checkResult.findFirstOrThrow({
+      where: { scanId: id, checkType: 'forms' },
+    });
+    expect(result.issuesFound).toBe(scan.criticalCount + scan.warningCount);
+  }, 180_000);
 });
 
 describe('scan lifecycle', () => {

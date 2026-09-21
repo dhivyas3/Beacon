@@ -4,12 +4,14 @@ import { join } from 'node:path';
 import { startExternalSite, startFixtureSite, type FixtureSite } from '@qa-hub/fixtures';
 import { createDb, type Db } from '@qa-hub/db';
 import { createSafeClient, type HostResolver, type SafeClient } from '@qa-hub/net';
-import { newId, USER_AGENT, type CheckType } from '@qa-hub/shared';
+import { CHECK_TYPES, newId, USER_AGENT, type CheckType, type FormMode } from '@qa-hub/shared';
 import { LocalStorage } from '@qa-hub/storage';
 import { createIsolatedDatabase, uniquePrefix, type TestDatabase } from '@qa-hub/testkit';
 import { pino } from 'pino';
 import { WorkerEnvSchema, type WorkerConfig } from '../config.js';
+import type { Check, CheckContext, IssueDraft, ScanInfo } from '../checks/types.js';
 import { UrlChecker, ResourceProbe } from '../http/url-checker.js';
+import { BrowserSession, type LoadedPage } from '../scan/browser.js';
 import type { Logger } from '../logger.js';
 import { HostThrottle, RateLimiter } from '../util/rate-limit.js';
 
@@ -106,6 +108,7 @@ export async function insertQueuedScan(
     checks?: CheckType[];
     pageConcurrency?: number;
     linkConcurrency?: number;
+    formMode?: FormMode;
     /** Overrides the hostname derived from the url, to avoid the one-active-scan-per-host rule. */
     hostname?: string;
   } = {},
@@ -122,6 +125,7 @@ export async function insertQueuedScan(
       checks: options.checks ?? ['images', 'links', 'staging-urls', 'page-health'],
       pageConcurrency: options.pageConcurrency ?? 3,
       linkConcurrency: options.linkConcurrency ?? 5,
+      formMode: options.formMode ?? 'detect',
     },
   });
   return id;
@@ -158,4 +162,76 @@ export function createChecker(
     timeoutMs: 5000,
   });
   return { checker, probe: new ResourceProbe(checker), client };
+}
+
+// ---- Running one check against a fixture page in a real browser ------------------------------
+
+export interface CheckRunner {
+  sites: Sites;
+  /** Loads a fixture page in Chromium and runs one check on it, the way the scan runner does. */
+  run(
+    check: Check,
+    path: string,
+    options?: {
+      formMode?: FormMode;
+      /** Reuse to share per-scan state (form de-duplication) between runs. */
+      scan?: ScanInfo;
+      status?: number;
+    },
+  ): Promise<{ drafts: IssueDraft[]; loaded: LoadedPage }>;
+  scanInfo(formMode?: FormMode): ScanInfo;
+  close(): Promise<void>;
+}
+
+export async function createCheckRunner(): Promise<CheckRunner> {
+  const sites = await startSites();
+  const browser = await BrowserSession.launch({
+    allowLocal: true,
+    resolver: offlineResolver,
+    args: OFFLINE_BROWSER_ARGS,
+  });
+  const checker = createChecker();
+  const signal = new AbortController().signal;
+
+  const scanInfo = (formMode: FormMode = 'detect'): ScanInfo => ({
+    id: 'scn_test',
+    rootUrl: `${sites.site.url}/`,
+    origin: sites.site.url,
+    hostname: '127.0.0.1',
+    checks: [...CHECK_TYPES],
+    formMode,
+  });
+
+  return {
+    sites,
+    scanInfo,
+    async run(check, path, options = {}) {
+      const url = path.startsWith('http') ? path : `${sites.site.url}${path}`;
+      const loaded = await browser.load(url, signal);
+      const context: CheckContext = {
+        scan: options.scan ?? scanInfo(options.formMode),
+        settings: {
+          stagingPatterns: ['staging.', 'dev.', '.netlify.app', '.vercel.app'],
+          formTestEmail: 'qa-test@example.com',
+        },
+        page: { id: 'pg_test', url: url },
+        observation: loaded.observation,
+        dom: loaded.dom,
+        browserPage: loaded.page,
+        probe: (target) =>
+          checker.probe.check(target, { external: new URL(target).origin !== sites.site.url }),
+        links: { register: () => Promise.resolve() },
+        isInternal: (target) => new URL(target).origin === sites.site.url,
+        signal,
+        log: silentLog,
+      };
+      const drafts = await check.run(context);
+      return { drafts, loaded };
+    },
+    async close() {
+      await browser.close();
+      await checker.client.close();
+      await sites.close();
+    },
+  };
 }

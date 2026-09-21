@@ -19,6 +19,17 @@ Scan it with `ALLOW_LOCAL_TARGETS=true` and `127.0.0.1` on the allowed domains l
 | `/form-good` | Working form with validation and a success message |
 | `/form-broken` | Form with no validation that accepts anything |
 | `/form-500` | Form whose endpoint returns 500 |
+| `/form-captcha`, `/form-login`, `/form-external`, `/form-delete` | Forms that must never be touched: a CAPTCHA, a password field, an action on another site, a "Delete my account" button |
+| `/form-nosubmit` | Form with no submit button |
+| `/form-bypass` | Fields marked `required` but the script sends the form empty |
+| `/form-lax-email` | Email field that accepts any text |
+| `/form-422` | Server rejects every submission with 422 |
+| `/form-silent` | Submission succeeds, page shows no confirmation |
+| `/form-soft-error` | Submission succeeds (200), page says "Sorry, something went wrong" |
+| `/form-dead` | Submit button does nothing |
+| `/form-native` | Plain HTML form post that redirects (303) to `/thanks` |
+| `/seo-bad` | Two long titles, no description, two canonicals (one on another site), `noindex`, no h1 or lang, broken share image, no `og:title` |
+| `/seo-dup-a`, `/seo-dup-b` | Share a title and a description |
 | `/orphan` | Linked from `/about` but missing from the sitemap |
 | `/sitemap-only` | In the sitemap but not linked from anywhere |
 | `/old-page` | 301 to `/about` |

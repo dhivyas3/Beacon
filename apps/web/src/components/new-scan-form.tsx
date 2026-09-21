@@ -12,31 +12,23 @@ import { Link, useNavigate } from 'react-router';
 import { toast } from 'sonner';
 import { ApiClientError, api } from '@/api/client';
 import { useSettings } from '@/api/hooks';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Checkbox } from '@/components/ui/checkbox';
 import { FieldError, Input, Label } from '@/components/ui/input';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { parseScanUrl } from '@/lib/format';
 
-/** Checks the worker does not run yet. They are listed so the list is complete, but cannot be picked. */
-export const UNAVAILABLE_CHECKS: readonly CheckType[] = ['forms', 'seo'];
-
 const FORM_MODE_LABELS: Record<FormMode, { label: string; hint: string }> = {
   detect: { label: 'Detect only', hint: 'Record forms and fields. Nothing is sent.' },
   validate_only: {
     label: 'Validate only',
-    hint: 'Submit empty and invalid data and check the messages. Nothing reaches the server.',
+    hint: 'Try each form empty and with a bad email address, and check it refuses. Every request that could send data is blocked, so nothing reaches the server.',
   },
   submit: {
     label: 'Submit test data',
-    hint: 'Send clearly marked test data and check the success state.',
+    hint: 'Fill each distinct form with clearly marked test data, send it once, and check what happens. Login, payment, CAPTCHA and third-party forms are never touched.',
   },
 };
-
-function availableChecks(checks: readonly CheckType[]): CheckType[] {
-  return checks.filter((check) => !UNAVAILABLE_CHECKS.includes(check));
-}
 
 /** The "New scan" box: a URL, and options for which checks to run and how to treat forms. */
 export const NewScanForm = forwardRef<HTMLInputElement>(function NewScanForm(_props, forwardedRef) {
@@ -53,7 +45,7 @@ export const NewScanForm = forwardRef<HTMLInputElement>(function NewScanForm(_pr
   const [formMode, setFormMode] = useState<FormMode | null>(null);
 
   // Start from the saved defaults until the person changes something.
-  const effectiveChecks = checks ?? availableChecks(settings.data?.defaultChecks ?? CHECK_TYPES);
+  const effectiveChecks = checks ?? settings.data?.defaultChecks ?? [...CHECK_TYPES];
   const effectiveFormMode = formMode ?? settings.data?.defaultFormMode ?? 'detect';
 
   const idempotencyKey = useRef<string>(crypto.randomUUID());
@@ -156,20 +148,15 @@ export const NewScanForm = forwardRef<HTMLInputElement>(function NewScanForm(_pr
                 <legend className="text-[13px] font-semibold text-fg">Checks</legend>
                 <div className="mt-2 space-y-2">
                   {CHECK_TYPES.map((check) => {
-                    const unavailable = UNAVAILABLE_CHECKS.includes(check);
                     const id = `check-${check}`;
                     return (
                       <div key={check} className="flex items-center gap-2.5">
                         <Checkbox
                           id={id}
-                          checked={!unavailable && effectiveChecks.includes(check)}
-                          disabled={unavailable}
+                          checked={effectiveChecks.includes(check)}
                           onCheckedChange={(value) => toggle(check, value === true)}
                         />
-                        <Label htmlFor={id} className={unavailable ? 'text-subtle' : undefined}>
-                          {CHECK_LABELS[check]}
-                        </Label>
-                        {unavailable ? <Badge tone="outline">Soon</Badge> : null}
+                        <Label htmlFor={id}>{CHECK_LABELS[check]}</Label>
                       </div>
                     );
                   })}

@@ -2,7 +2,7 @@
 
 QA Hub validates live websites after launch. Submit a URL (from the dashboard, n8n, monday.com via n8n, or CI) and it assigns a scan ID, discovers every page, runs checks in the background, streams progress, and produces a report.
 
-> **Status: Phase 4 of 6 (web app).** You can sign in, start scans, watch them run and read the report in the dashboard. The `images`, `links`, `staging-urls` and `page-health` checks are live. The `forms` and `seo` checks arrive in Phase 5, and callbacks, live SSE updates, CSV/PDF export and the command palette in Phase 6. See [docs/PLAN.md](docs/PLAN.md). This README describes what exists today.
+> **Status: Phase 5 of 6 (forms and SEO).** All six checks are live: images, links, staging URLs, page health, forms and SEO. Forms can be detected, validated without sending anything, or submitted with test data. Callbacks, live SSE updates, CSV/PDF export and the command palette arrive in Phase 6. See [docs/PLAN.md](docs/PLAN.md). This README describes what exists today.
 
 ## Quick start
 
@@ -57,6 +57,27 @@ pnpm --filter @qa-hub/fixtures serve   # http://127.0.0.1:4010
 ```
 
 See [fixtures/site/README.md](fixtures/site/README.md) for what is wrong with each page.
+
+## What each check does
+
+| Check | Looks for |
+| --- | --- |
+| `images` | Broken images, missing `alt`, broken `srcset` candidates and CSS backgrounds |
+| `links` | Broken, redirect-chained and unreachable links, each unique link verified once |
+| `staging-urls` | Links, images, scripts, canonicals and requests that point at staging or development hosts |
+| `page-health` | Non-2xx pages, console errors, uncaught exceptions, failing requests, mixed content |
+| `seo` | Missing or long titles, missing description, canonical problems, `noindex`, missing h1 and `lang`, missing social tags, broken share image, duplicate titles and descriptions, pages missing from the sitemap |
+| `forms` | Depends on the form mode below |
+
+### Form modes
+
+| Mode | What QA Hub does | Sends anything? |
+| --- | --- | --- |
+| `detect` (default) | Reads the markup only: no submit button, a secure page posting to `http://` | No |
+| `validate_only` | Also submits each form empty, and with a bad email address, in a copy of the page where every request that could send data is blocked | No, never |
+| `submit` | Also fills each form with clearly marked test data and submits it once, then checks the result: server error, rejection, nothing sent, no confirmation, or an error message shown. Needs the `forms:submit` permission | Yes, once per distinct form |
+
+Login, payment, file upload, CAPTCHA, search and third-party forms are never touched, and neither are forms with a destructive or financial button such as "Delete" or "Buy now". Each is reported as skipped with the reason. Requests QA Hub sends when submitting carry an `X-QAHub-Test: form-submission` header so site owners can filter them.
 
 ## Architecture
 

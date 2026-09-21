@@ -237,3 +237,35 @@ Export buttons (CSV and PDF), the command palette and the "fixed since last scan
 ## 2026-09-20 Web: report and settings load on demand
 
 The report page carries the charting library, so it and settings are lazy-loaded. Sign-in and the dashboard stay in the main bundle, which dropped from about 1 MB to 566 kB (178 kB gzipped).
+
+## 2026-09-21 Forms: three modes with a hard line between "blocked" and "sent"
+
+`detect` reads the markup and never interacts. `validate_only` interacts, but inside a scratch copy of the page where every request that is not GET, HEAD or OPTIONS is recorded and then refused, so a bug in the check cannot become a real submission. `submit` is the only mode that lets a write through. The scope check stays in the API (`forms:submit`, enforced when the scan is created and when a default of `submit` is applied), because the worker has no notion of who asked. Tests assert both directions: the fixture site received nothing in the first two modes, and exactly one identified request per distinct form in the third.
+
+## 2026-09-21 Forms: what is never touched
+
+Forms with a CAPTCHA, a password field, a file input, payment-looking fields (`cc-*` autocomplete, card, cvv, iban), a destructive or financial button (delete, unsubscribe, buy, pay, checkout, donate), an action on another origin, or that are search boxes are skipped. Skips other than search, missing button and no fields are reported as `info` so nothing is silently untested. This is deliberately conservative: a false skip costs one manual check, a false submit could cost an order or a deleted account.
+
+## 2026-09-21 Forms: each distinct form once per scan, at most 20
+
+A newsletter box in every footer would otherwise be submitted once per page. A form's identity is its action (or "self" when it has none), method, field names and button text. State is kept in a `WeakMap` keyed by the scan, and a scan tests at most 20 forms. Findings attach to the first page where the form was seen and group across pages by fingerprint.
+
+## 2026-09-21 Forms: test data and traceability
+
+Test data is obviously artificial ("QA Hub Test", the configured test email, "This is an automated test from QA Hub. Please ignore it."). Only required fields, email fields and name or message fields are filled. Submissions carry `X-QAHub-Test: form-submission`, added only to writes to the site's own origin and the form's action origin so third-party scripts are not disturbed. The header is the supported way for a site owner to filter or reject test traffic.
+
+## 2026-09-21 Forms: severity
+
+A submission that fails on the server (5xx) or on the network is critical, because visitors cannot use the form. A 4xx is a warning: the server may be rejecting automation or our test data. Sent-but-no-confirmation, an error message shown after a 200, a button that sends nothing, empty or bad-email submissions being accepted, and a missing submit button are warnings. An insecure `http://` action on an https page, or a password field on an http page, is critical. Skips and "could not fill every required field" are `info`, which never counts towards the health score.
+
+## 2026-09-21 Check-supplied screenshots
+
+The main page cannot show what a form said after it was submitted, so an `IssueDraft` may carry `screenshotPng`. `PageScreenshots` stores it as the issue's screenshot in preference to highlighting an element, and it is never written into the evidence.
+
+## 2026-09-21 SEO: what is flagged and how hard
+
+Critical: no title, and `noindex` (an accidental noindex after launch is the classic disaster). Warnings: title over 70 characters, several title tags, no or absurdly long (over 320) description, no canonical, several canonicals, a canonical on a different non-staging site, no h1, no `lang`, missing `og:title`, `og:description` or `og:image`, a share image that does not load, and titles or descriptions shared by several pages. Short titles are not flagged because "Contact" is a legitimate title and the rule was noise. Several h1 elements are legal HTML5 and not flagged. A canonical on a staging host is left to the staging URLs check so it is not reported twice. Pages that did not answer 2xx are skipped, since the page health check already reports them. Sitemap findings still come from discovery.
+
+## 2026-09-21 The browser session settles when a scan is stopped
+
+A cancelled or shut-down scan could wait forever for a Playwright call that was in flight when its context was closed (seen as a hung test on the second page). Every call in `BrowserSession.load` now races the abort signal through `abortable`, and a navigation that fails because the scan is stopping is rethrown instead of being recorded as a page that failed to load.

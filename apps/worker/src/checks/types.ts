@@ -17,6 +17,12 @@ export interface IssueDraft {
    */
   subject?: string | null;
   evidence?: Record<string, unknown>;
+  /**
+   * A screenshot the check took itself, for findings that are about something the main page
+   * screenshot cannot show, such as what a form said after it was submitted. Never persisted in
+   * the issue row: it is stored as the issue's screenshot and dropped.
+   */
+  screenshotPng?: Buffer;
 }
 
 // ---- What the browser saw while loading a page ---------------------------------------------
@@ -89,6 +95,19 @@ export interface SnapFormField {
   name: string | null;
   required: boolean;
   selector: string | null;
+  /** Text of the associated label or aria-label. */
+  label: string;
+  placeholder: string | null;
+  autocomplete: string | null;
+  pattern: string | null;
+  minLength: number | null;
+  maxLength: number | null;
+  min: string | null;
+  max: string | null;
+  disabled: boolean;
+  readOnly: boolean;
+  /** First few option values of a select, empty option excluded. */
+  options: string[];
 }
 
 export interface SnapForm {
@@ -97,7 +116,11 @@ export interface SnapForm {
   action: string | null;
   method: string;
   hasSubmit: boolean;
+  submitSelector: string | null;
+  submitText: string;
   hasCaptcha: boolean;
+  /** A search box: read-only by nature, never tested. */
+  isSearch: boolean;
   noValidate: boolean;
   fields: SnapFormField[];
 }

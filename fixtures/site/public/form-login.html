@@ -1,0 +1,24 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Sign in form</title>
+    <meta name="description" content="Fixture page: Sign in form." />
+    <link rel="canonical" href="{{ORIGIN}}/form-login" />
+    <meta property="og:title" content="Sign in form" />
+    <meta property="og:description" content="Sign in form." />
+    <meta property="og:image" content="{{ORIGIN}}/images/ok.svg" />
+  </head>
+  <body>
+    <main>
+      <h1>Sign in form</h1>
+      <form id="f" action="/api/forms/good" method="post">
+        <label>Email <input type="email" name="email" required /></label>
+        <label>Password <input type="password" name="password" required /></label>
+        <button type="submit">Sign in</button>
+      </form>
+      <p><a href="/">Home</a></p>
+    </main>
+
+  </body>
+</html>

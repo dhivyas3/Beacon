@@ -44,6 +44,8 @@ Each phase ends with `pnpm typecheck && pnpm lint && pnpm test` green and a conv
    with the other deferred items (see DECISIONS.md, "Web: deferred to Phase 6").
 5. **Forms and SEO** - `forms` check with `detect` / `validate_only` / `submit` modes and
    `forms:submit` scope enforcement, `seo` check, screenshots with element highlighting.
+   Delivered: forms are tested in a scratch page; the browser session and screenshots are as in
+   phase 3, plus check-supplied screenshots (see DECISIONS.md, "Forms").
 6. **Integrations and polish** - signed callbacks with retries + `WebhookDelivery`, SSE
    throttling, CSV + PDF export, previous-scan comparison (new / still open / fixed), ignore
    states, command palette, n8n workflows, docs, end-to-end test, accessibility and

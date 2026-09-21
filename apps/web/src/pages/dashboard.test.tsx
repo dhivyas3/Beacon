@@ -295,15 +295,20 @@ describe('starting a scan', () => {
 
     await user.click(screen.getByRole('checkbox', { name: 'Links' }));
     await user.click(screen.getByRole('radio', { name: /validate only/i }));
-    // Checks the worker cannot run yet are listed but cannot be chosen.
-    expect(screen.getByRole('checkbox', { name: 'Forms' })).toBeDisabled();
-    expect(screen.getByRole('checkbox', { name: 'SEO' })).toBeDisabled();
+    // Every check can be chosen, and the form modes say what they will and will not do.
+    expect(screen.getByRole('checkbox', { name: 'Forms' })).toBeEnabled();
+    expect(screen.getByRole('checkbox', { name: 'Forms' })).not.toBeChecked();
+    await user.click(screen.getByRole('checkbox', { name: 'SEO' }));
+    expect(
+      screen.getByText(/Login, payment, CAPTCHA and third-party forms are never touched/),
+    ).toBeInTheDocument();
+    expect(screen.getByText(/nothing reaches the server/i)).toBeInTheDocument();
     await user.keyboard('{Escape}');
 
     await user.click(screen.getByRole('button', { name: /new scan/i }));
     await waitFor(() => expect(api.callsTo('POST', '/scans')).toHaveLength(1));
     expect(api.callsTo('POST', '/scans')[0]?.body).toMatchObject({
-      checks: ['images', 'staging-urls', 'page-health'],
+      checks: ['images', 'staging-urls', 'page-health', 'seo'],
       formMode: 'validate_only',
     });
   });

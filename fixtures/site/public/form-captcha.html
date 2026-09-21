@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Form with a CAPTCHA</title>
+    <meta name="description" content="Fixture page: Form with a CAPTCHA." />
+    <link rel="canonical" href="{{ORIGIN}}/form-captcha" />
+    <meta property="og:title" content="Form with a CAPTCHA" />
+    <meta property="og:description" content="Form with a CAPTCHA." />
+    <meta property="og:image" content="{{ORIGIN}}/images/ok.svg" />
+  </head>
+  <body>
+    <main>
+      <h1>Form with a CAPTCHA</h1>
+      <form id="f" action="/api/forms/good" method="post">
+        <label>Name <input type="text" name="name" required /></label>
+        <label>Email <input type="email" name="email" required /></label>
+        <div class="g-recaptcha" data-sitekey="fixture"></div>
+        <button type="submit">Send</button>
+      </form>
+      <p><a href="/">Home</a></p>
+    </main>
+
+  </body>
+</html>

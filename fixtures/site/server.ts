@@ -11,6 +11,8 @@ export interface RecordedRequest {
   path: string;
   userAgent: string;
   body: string;
+  /** Value of the `X-QAHub-Test` header, present on form submissions made by the forms check. */
+  testHeader: string | null;
 }
 
 export interface FixtureSite {
@@ -50,6 +52,22 @@ const PAGES: Record<string, string> = {
   '/form-good': 'form-good.html',
   '/form-broken': 'form-broken.html',
   '/form-500': 'form-500.html',
+  '/form-captcha': 'form-captcha.html',
+  '/form-login': 'form-login.html',
+  '/form-external': 'form-external.html',
+  '/form-nosubmit': 'form-nosubmit.html',
+  '/form-delete': 'form-delete.html',
+  '/form-422': 'form-422.html',
+  '/form-silent': 'form-silent.html',
+  '/form-soft-error': 'form-soft-error.html',
+  '/form-dead': 'form-dead.html',
+  '/form-native': 'form-native.html',
+  '/form-bypass': 'form-bypass.html',
+  '/form-lax-email': 'form-lax-email.html',
+  '/thanks': 'thanks.html',
+  '/seo-bad': 'seo-bad.html',
+  '/seo-dup-a': 'seo-dup-a.html',
+  '/seo-dup-b': 'seo-dup-b.html',
   '/orphan': 'orphan.html',
   '/sitemap-only': 'sitemap-only.html',
 };
@@ -155,6 +173,8 @@ export async function startFixtureSite(options: FixtureOptions = {}): Promise<Fi
       path,
       userAgent: String(req.headers['user-agent'] ?? ''),
       body,
+      testHeader:
+        req.headers['x-qahub-test'] === undefined ? null : String(req.headers['x-qahub-test']),
     };
     requests.push(record);
     const vars = { origin, external: options.externalUrl ?? origin };
@@ -217,6 +237,18 @@ export async function startFixtureSite(options: FixtureOptions = {}): Promise<Fi
       case '/api/forms/broken':
         submissions.push(record);
         return send(res, 200, '{"ok":true}', { 'content-type': CONTENT_TYPES['.json'] as string });
+      case '/api/forms/422':
+        submissions.push(record);
+        return send(res, 422, '{"error":"email domain not accepted"}', {
+          'content-type': CONTENT_TYPES['.json'] as string,
+        });
+      case '/api/forms/silent':
+      case '/api/forms/soft-error':
+        submissions.push(record);
+        return send(res, 200, '{"ok":true}', { 'content-type': CONTENT_TYPES['.json'] as string });
+      case '/api/forms/native':
+        submissions.push(record);
+        return send(res, 303, '', { location: '/thanks' });
       case '/api/forms/500':
         submissions.push(record);
         return send(res, 500, '{"error":"database is down"}', {
@@ -255,7 +287,13 @@ export async function startExternalSite(options: { port?: number } = {}): Promis
   const server = createServer((req, res) => {
     const method = req.method ?? 'GET';
     const path = new URL(req.url ?? '/', 'http://external').pathname;
-    requests.push({ method, path, userAgent: String(req.headers['user-agent'] ?? ''), body: '' });
+    requests.push({
+      method,
+      path,
+      userAgent: String(req.headers['user-agent'] ?? ''),
+      body: '',
+      testHeader: null,
+    });
     const html = { 'content-type': CONTENT_TYPES['.html'] as string };
     switch (path) {
       case '/ok.html':

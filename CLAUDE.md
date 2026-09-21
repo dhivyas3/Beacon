@@ -60,11 +60,16 @@ local `redis-server` (from `PATH` or `REDIS_SERVER_BIN`) are started on random p
 - Web data goes through `apps/web/src/api/client.ts` (`api`, `ApiClientError`) and the TanStack Query hooks in `api/hooks.ts` (`keys` holds every query key). Components never call `fetch`. Active scans poll (1s detail, 2s list); nothing polls when idle.
 - Web colours are CSS variables in `src/index.css` (light and dark). Use the semantic Tailwind tokens (`text-fg`, `bg-surface`, `text-critical-text`), never raw hex values, so both themes and contrast stay correct.
 - Web tests use `fakeApi` from `src/test/fake-api.ts` (an in-memory `fetch`, keyed `'GET /scans/:id'`, records calls) and `renderApp(route)` from `src/test/render.tsx`. Find things by role and accessible name, as a person would. A fake route nobody registered answers 404, so a forgotten route fails loudly.
-- Checks that exist in the API but not in the worker yet (`forms`, `seo`) are listed and disabled in the UI through `UNAVAILABLE_CHECKS`. Remove them from that list when the check ships.
+- Every `CheckType` has a check in the worker, so the UI offers all of them. If you add a new check type, add it to `CHECK_TYPES` in shared, register the check, and add fixture pages for it.
 - Commit messages follow Conventional Commits (`feat(api): ...`, `fix(worker): ...`).
 - Never scan a real third-party site in development or tests; use `fixtures/site`. Worker tests keep DNS and Chromium offline with `offlineResolver` and `OFFLINE_BROWSER_ARGS` from `apps/worker/src/test/harness.ts`.
 - A check is one file in `apps/worker/src/checks/` exporting a `Check` (`run` per page, optional `finalize` once per scan), registered in `checks/index.ts`. Keep the analysis in pure functions so it can be unit tested without a browser.
 - Code that runs inside the browser page (`scan/snapshot-script.ts`) is a plain JavaScript string. Never pass a TypeScript function to `page.evaluate`: bundlers inject helpers that do not exist in the page.
+- A check that interacts with a page (`forms`) must never do so on the page the other checks share. Open a scratch page in the same browser context (`browserPage.context().newPage()`) so the SSRF guard applies and the main page stays untouched for screenshots. In `validate_only` mode, block every non-GET request in that scratch page and assert in tests that the fixture site received nothing.
+- A check that needs the whole site keeps per-scan state in a `WeakMap` keyed by `context.scan` and reports in `finalize` (see `seo.ts`), so state cannot leak between scans or outlive a failed one.
+- A check may attach its own screenshot to a finding with `IssueDraft.screenshotPng` when the main page cannot show the problem (for example, a form's page after submitting it).
+- Every Playwright call in `BrowserSession.load` goes through `abortable(promise, signal)`, because a call in flight when a context is closed may never settle and would wedge a stopping scan.
+- Never type a backslash-heavy regex through a shell command or heredoc; write the file with the editor tool. Prefer patterns that need no escapes (`[^a-zA-Z0-9]+`).
 - Everything the worker does to a scan row must be conditional on the status (`updateMany` with a `where` on status), so a scan cancelled or failed elsewhere is never overwritten.
 
 ## Windows dev notes

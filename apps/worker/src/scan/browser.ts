@@ -23,6 +23,32 @@ export interface LoadedPage {
 const IGNORED_FAILURES = new Set(['net::ERR_ABORTED']);
 
 /**
+ * Settles as soon as the signal aborts, even if the browser never answers. Playwright calls that
+ * are in flight when a context is closed do not always reject, and a scan that is stopping must not
+ * wait for them.
+ */
+export function abortable<T>(promise: Promise<T>, signal: AbortSignal): Promise<T> {
+  if (signal.aborted) {
+    void promise.catch(() => undefined);
+    return Promise.reject(new Error('The operation was aborted'));
+  }
+  return new Promise<T>((resolve, reject) => {
+    const onAbort = (): void => reject(new Error('The operation was aborted'));
+    signal.addEventListener('abort', onAbort, { once: true });
+    promise.then(
+      (value) => {
+        signal.removeEventListener('abort', onAbort);
+        resolve(value);
+      },
+      (error: unknown) => {
+        signal.removeEventListener('abort', onAbort);
+        reject(error instanceof Error ? error : new Error(String(error)));
+      },
+    );
+  });
+}
+
+/**
  * One headless Chromium for the duration of a scan. Every page gets its own isolated context, and
  * every request the browser makes, including subresources and redirects, passes the SSRF guard.
  */
@@ -86,7 +112,14 @@ export class BrowserSession {
 
   /** Opens a page, waits for it to settle, scrolls it, and captures what it looks like. */
   async load(url: string, signal: AbortSignal): Promise<LoadedPage> {
-    const context = await this.newContext();
+    const opening = this.newContext();
+    let context: BrowserContext;
+    try {
+      context = await abortable(opening, signal);
+    } catch (error) {
+      void opening.then((late) => late.close()).catch(() => undefined);
+      throw error;
+    }
     const onAbort = (): void => void context.close().catch(() => undefined);
     signal.addEventListener('abort', onAbort, { once: true });
 
@@ -96,7 +129,7 @@ export class BrowserSession {
     const pageErrors: string[] = [];
 
     try {
-      const page = await context.newPage();
+      const page = await abortable(context.newPage(), signal);
 
       page.on('request', (request) => {
         const entry: NetworkEntry = {
@@ -134,12 +167,17 @@ export class BrowserSession {
       let status: number | null = null;
       let loadError: string | null = null;
       try {
-        const response = await page.goto(url, {
-          waitUntil: 'domcontentloaded',
-          timeout: this.options.navigationTimeoutMs ?? 30_000,
-        });
+        const response = await abortable(
+          page.goto(url, {
+            waitUntil: 'domcontentloaded',
+            timeout: this.options.navigationTimeoutMs ?? 30_000,
+          }),
+          signal,
+        );
         status = response?.status() ?? null;
       } catch (error) {
+        // A stopping scan is not a page that failed to load.
+        if (signal.aborted) throw error;
         loadError =
           error instanceof Error
             ? (error.message.split('\n')[0] ?? 'Navigation failed')
@@ -150,9 +188,9 @@ export class BrowserSession {
       let dom: DomSnapshot;
       if (loadError === null) {
         await page.waitForLoadState('networkidle', { timeout: idle }).catch(() => undefined);
-        await page.evaluate(SCROLL_SCRIPT).catch(() => undefined);
+        await abortable(page.evaluate(SCROLL_SCRIPT), signal).catch(() => undefined);
         await page.waitForLoadState('networkidle', { timeout: 3000 }).catch(() => undefined);
-        dom = await page.evaluate(SNAPSHOT_SCRIPT);
+        dom = await abortable(page.evaluate(SNAPSHOT_SCRIPT), signal);
       } else {
         dom = emptySnapshot();
       }
