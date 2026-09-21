@@ -39,6 +39,14 @@ export type TriggerType = (typeof TRIGGER_TYPES)[number];
 export const EXTERNAL_TRIGGER_SOURCES = ['n8n', 'monday'] as const;
 export type ExternalTriggerSource = (typeof EXTERNAL_TRIGGER_SOURCES)[number];
 
+/** Progress of a notification: waiting or being retried, delivered, given up on, or deliberately not sent. */
+export const DELIVERY_STATUSES = ['pending', 'sent', 'failed', 'skipped'] as const;
+export type DeliveryStatus = (typeof DELIVERY_STATUSES)[number];
+
+/** What a recipient wants to be emailed about. */
+export const NOTIFY_PREFERENCES = ['every_check', 'new_issues_only'] as const;
+export type NotifyPreference = (typeof NOTIFY_PREFERENCES)[number];
+
 export const SAMPLE_SIZE = { min: 1, max: 100, default: 10 } as const;
 export const MAX_STATIC_PAGES = 50;
 export const MAX_PINNED_PAGES = 20;
@@ -104,6 +112,7 @@ export const ID_PREFIXES = {
   linkSource: 'lns',
   website: 'web',
   recipient: 'rcp',
+  emailDelivery: 'eml',
 } as const;
 export type IdPrefix = (typeof ID_PREFIXES)[keyof typeof ID_PREFIXES];
 
@@ -160,6 +169,10 @@ export const QUEUES = {
   scan: 'scan',
   callbacks: 'callbacks',
   maintenance: 'maintenance',
+  /** One job per finished scan: decides which callbacks and emails it owes. */
+  notifications: 'notifications',
+  /** One job per email to send, retried on its own. */
+  emails: 'emails',
 } as const;
 
 /** Payload of a job on the scan queue. The job id is the scan id. */

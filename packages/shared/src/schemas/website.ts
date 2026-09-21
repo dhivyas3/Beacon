@@ -7,6 +7,7 @@ import {
   MAX_PINNED_PAGES,
   MAX_RECIPIENTS,
   MAX_STATIC_PAGES,
+  NOTIFY_PREFERENCES,
   PAGE_SELECTION_MODES,
   SAMPLE_SIZE,
   SCAN_STATUSES,
@@ -14,6 +15,7 @@ import {
 } from '../constants.js';
 import { normalizeUrl } from '../url.js';
 import { HttpUrlSchema, MetadataSchema, PaginationQuerySchema } from './common.js';
+import { EmailStatusSchema } from './notifications.js';
 
 const HourSchema = z.number().int().min(0).max(23);
 const DayOfWeekSchema = z.number().int().min(0).max(6).describe('0 is Sunday.');
@@ -30,6 +32,9 @@ export const WebsiteRecipientSchema = z
     email: z.email(),
     name: z.string().nullable(),
     isActive: z.boolean(),
+    notify: z
+      .enum(NOTIFY_PREFERENCES)
+      .describe('`every_check` emails every report. `new_issues_only` skips clean ones.'),
     createdAt: z.iso.datetime(),
   })
   .meta({ id: 'WebsiteRecipient' });
@@ -39,6 +44,7 @@ export const RecipientInputSchema = z
   .object({
     email: z.email().max(254),
     name: z.string().trim().min(1).max(100).nullable().optional(),
+    notify: z.enum(NOTIFY_PREFERENCES).optional(),
   })
   .meta({ id: 'RecipientInput' });
 export type RecipientInput = z.infer<typeof RecipientInputSchema>;
@@ -82,6 +88,7 @@ export const WebsiteSchema = z
     enabledChecks: z.array(z.enum(CHECK_TYPES)),
     formMode: z.enum(FORM_MODES),
     isActive: z.boolean(),
+    emailEnabled: z.boolean(),
     lastCheckAt: z.iso.datetime().nullable(),
     nextCheckAt: z.iso.datetime().nullable(),
     lastRunError: z
@@ -95,6 +102,9 @@ export const WebsiteSchema = z
       .int()
       .describe('Distinct pages checked across every completed check of this website.'),
     activeScanId: z.string().nullable().describe('A check that is queued or running right now.'),
+    emailStatus: EmailStatusSchema.nullable().describe(
+      'How the email for the latest completed check went, or null when none was due.',
+    ),
     createdAt: z.iso.datetime(),
     updatedAt: z.iso.datetime(),
   })
@@ -117,6 +127,7 @@ export const WebsiteSchema = z
       enabledChecks: ['images', 'links', 'forms', 'seo', 'page-health'],
       formMode: 'validate_only',
       isActive: true,
+      emailEnabled: true,
       lastCheckAt: '2026-09-01T06:04:12.000Z',
       nextCheckAt: '2026-10-01T06:00:00.000Z',
       lastRunError: null,
@@ -126,6 +137,7 @@ export const WebsiteSchema = z
           email: 'owner@example-estates.co.uk',
           name: 'Sam Owner',
           isActive: true,
+          notify: 'every_check',
           createdAt: '2026-08-01T09:00:00.000Z',
         },
       ],
@@ -143,6 +155,13 @@ export const WebsiteSchema = z
       },
       pagesEverChecked: 41,
       activeScanId: null,
+      emailStatus: {
+        scanId: 'scn_a1B2c3D4e5F6',
+        sent: 1,
+        failed: 0,
+        pending: 0,
+        lastError: null,
+      },
       createdAt: '2026-08-01T09:00:00.000Z',
       updatedAt: '2026-09-01T06:04:12.000Z',
     },
@@ -254,6 +273,9 @@ const WebsiteFieldsShape = {
   enabledChecks: z.array(z.enum(CHECK_TYPES)).min(1),
   formMode: z.enum(FORM_MODES).describe('`submit` requires the `forms:submit` scope.'),
   isActive: z.boolean().describe('A paused website is not checked on its schedule.'),
+  emailEnabled: z
+    .boolean()
+    .describe('Turn off to keep the recipients but stop emailing them, for example while tuning.'),
 };
 
 export const CreateWebsiteBodySchema = z
@@ -270,6 +292,7 @@ export const CreateWebsiteBodySchema = z
     enabledChecks: WebsiteFieldsShape.enabledChecks.default([...CHECK_TYPES]),
     formMode: WebsiteFieldsShape.formMode.default('validate_only'),
     isActive: WebsiteFieldsShape.isActive.default(true),
+    emailEnabled: WebsiteFieldsShape.emailEnabled.default(true),
     recipients: z.array(RecipientInputSchema).max(MAX_RECIPIENTS).default([]),
   })
   .superRefine((body, ctx) => {
@@ -310,6 +333,15 @@ export const ListWebsitesQuerySchema = PaginationQuerySchema.extend({
 export type ListWebsitesQuery = z.infer<typeof ListWebsitesQuerySchema>;
 
 export const AddRecipientBodySchema = RecipientInputSchema;
+
+export const UpdateRecipientBodySchema = z
+  .object({
+    name: z.string().trim().min(1).max(100).nullable().optional(),
+    isActive: z.boolean().optional().describe('Off stops the emails without removing the address.'),
+    notify: z.enum(NOTIFY_PREFERENCES).optional(),
+  })
+  .meta({ id: 'UpdateRecipientBody', example: { notify: 'new_issues_only' } });
+export type UpdateRecipientBody = z.infer<typeof UpdateRecipientBodySchema>;
 
 export const WebsiteHistoryItemSchema = z
   .object({

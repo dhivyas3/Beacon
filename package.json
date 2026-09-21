@@ -15,6 +15,7 @@
     "test": "turbo run test",
     "dev": "turbo run dev --parallel",
     "dev:services": "pnpm --filter @beacon/testkit services",
+    "email:preview": "pnpm --filter @beacon/email-templates preview",
     "db:generate": "pnpm --filter @beacon/db generate",
     "db:migrate": "pnpm --filter @beacon/db migrate",
     "db:migrate:dev": "pnpm --filter @beacon/db migrate:dev",

@@ -8,9 +8,13 @@ import {
   type CheckNowBody,
   type CheckType,
   type CreateWebsiteBody,
+  type EmailDelivery,
+  type EmailStatus,
+  type ListEmailDeliveriesQuery,
   type ListWebsitesQuery,
   type Page,
   type RecipientInput,
+  type UpdateRecipientBody,
   type UpdateWebsiteBody,
   type Website,
   type WebsiteHistoryItem,
@@ -34,6 +38,7 @@ interface Extras {
   latest: Website['latest'];
   pagesEverChecked: number;
   activeScanId: string | null;
+  emailStatus: EmailStatus | null;
 }
 
 function recipientDto(row: WebsiteRow['recipients'][number]): WebsiteRecipient {
@@ -42,6 +47,7 @@ function recipientDto(row: WebsiteRow['recipients'][number]): WebsiteRecipient {
     email: row.email,
     name: row.name,
     isActive: row.isActive,
+    notify: row.notify,
     createdAt: row.createdAt.toISOString(),
   };
 }
@@ -64,6 +70,7 @@ function toWebsiteDto(row: WebsiteRow, extras: Extras): Website {
     enabledChecks: row.enabledChecks as CheckType[],
     formMode: row.formMode,
     isActive: row.isActive,
+    emailEnabled: row.emailEnabled,
     lastCheckAt: row.lastCheckAt?.toISOString() ?? null,
     nextCheckAt: row.nextCheckAt?.toISOString() ?? null,
     lastRunError: row.lastRunError,
@@ -71,6 +78,7 @@ function toWebsiteDto(row: WebsiteRow, extras: Extras): Website {
     latest: extras.latest,
     pagesEverChecked: extras.pagesEverChecked,
     activeScanId: extras.activeScanId,
+    emailStatus: extras.emailStatus,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
   };
@@ -84,7 +92,13 @@ function normaliseRecipients(recipients: readonly RecipientInput[]): RecipientIn
   const seen = new Map<string, RecipientInput>();
   for (const recipient of recipients) {
     const email = recipient.email.trim().toLowerCase();
-    if (!seen.has(email)) seen.set(email, { email, name: recipient.name ?? null });
+    if (!seen.has(email)) {
+      seen.set(email, {
+        email,
+        name: recipient.name ?? null,
+        notify: recipient.notify ?? 'every_check',
+      });
+    }
   }
   return [...seen.values()];
 }
@@ -104,7 +118,10 @@ export class WebsiteService {
     const { db } = this.deps;
     const ids = rows.map((row) => row.id);
     const extras = new Map<string, Extras>(
-      ids.map((id) => [id, { latest: null, pagesEverChecked: 0, activeScanId: null }]),
+      ids.map((id) => [
+        id,
+        { latest: null, pagesEverChecked: 0, activeScanId: null, emailStatus: null },
+      ]),
     );
     if (ids.length === 0) return extras;
 
@@ -168,7 +185,51 @@ export class WebsiteService {
       const entry = extras.get(row.websiteId);
       if (entry) entry.pagesEverChecked = row.count;
     }
+    await this.addEmailStatus(ids, extras);
     return extras;
+  }
+
+  /** How the emails of each website's most recent emailed check went. */
+  private async addEmailStatus(ids: string[], extras: Map<string, Extras>): Promise<void> {
+    const { db } = this.deps;
+    const newest = await db.emailDelivery.findMany({
+      where: { websiteId: { in: ids } },
+      orderBy: [{ websiteId: 'asc' }, { createdAt: 'desc' }, { id: 'desc' }],
+      distinct: ['websiteId'],
+      select: { websiteId: true, scanId: true },
+    });
+    if (newest.length === 0) return;
+    const scanIds = newest.map((row) => row.scanId);
+    const [counts, failures] = await Promise.all([
+      db.emailDelivery.groupBy({
+        by: ['scanId', 'status'],
+        where: { scanId: { in: scanIds } },
+        _count: { _all: true },
+      }),
+      db.emailDelivery.findMany({
+        where: { scanId: { in: scanIds }, status: 'failed' },
+        orderBy: { updatedAt: 'desc' },
+        select: { scanId: true, error: true, email: true },
+      }),
+    ]);
+    for (const { websiteId, scanId } of newest) {
+      if (websiteId === null) continue;
+      const count = (status: string): number =>
+        counts.find((c) => c.scanId === scanId && c.status === status)?._count._all ?? 0;
+      const failure = failures.find((f) => f.scanId === scanId);
+      const entry = extras.get(websiteId);
+      if (entry) {
+        entry.emailStatus = {
+          scanId,
+          sent: count('sent'),
+          failed: count('failed'),
+          pending: count('pending'),
+          lastError: failure
+            ? `${failure.email}: ${failure.error ?? 'It could not be sent.'}`
+            : null,
+        };
+      }
+    }
   }
 
   private async toDtos(rows: readonly WebsiteRow[]): Promise<Website[]> {
@@ -327,12 +388,14 @@ export class WebsiteService {
           enabledChecks: [...new Set(body.enabledChecks)],
           formMode: body.formMode,
           isActive: body.isActive,
+          emailEnabled: body.emailEnabled,
           nextCheckAt,
           recipients: {
             create: normaliseRecipients(body.recipients).map((recipient) => ({
               id: newId('rcp'),
               email: recipient.email,
               name: recipient.name ?? null,
+              notify: recipient.notify ?? 'every_check',
             })),
           },
         },
@@ -431,6 +494,7 @@ export class WebsiteService {
         sampleSize: merged.sampleSize,
         enabledChecks: merged.enabledChecks,
         ...(body.formMode === undefined ? {} : { formMode: body.formMode }),
+        ...(body.emailEnabled === undefined ? {} : { emailEnabled: body.emailEnabled }),
         isActive,
         nextCheckAt,
         ...(resumed ? { lastRunError: null } : {}),
@@ -453,7 +517,13 @@ export class WebsiteService {
     const email = input.email.trim().toLowerCase();
     try {
       const row = await db.websiteRecipient.create({
-        data: { id: newId('rcp'), websiteId: id, email, name: input.name ?? null },
+        data: {
+          id: newId('rcp'),
+          websiteId: id,
+          email,
+          name: input.name ?? null,
+          notify: input.notify ?? 'every_check',
+        },
       });
       return recipientDto(row);
     } catch (error) {
@@ -464,6 +534,62 @@ export class WebsiteService {
       }
       throw error;
     }
+  }
+
+  /** Changes who a recipient is, whether they receive reports, and what they receive. */
+  async updateRecipient(
+    id: string,
+    recipientId: string,
+    body: UpdateRecipientBody,
+  ): Promise<WebsiteRecipient> {
+    const { db } = this.deps;
+    const updated = await db.websiteRecipient.updateMany({
+      where: { id: recipientId, websiteId: id },
+      data: {
+        ...(body.name === undefined ? {} : { name: body.name }),
+        ...(body.isActive === undefined ? {} : { isActive: body.isActive }),
+        ...(body.notify === undefined ? {} : { notify: body.notify }),
+      },
+    });
+    if (updated.count === 0) {
+      await this.getRow(id);
+      throw notFound('Recipient', recipientId);
+    }
+    return recipientDto(
+      await db.websiteRecipient.findUniqueOrThrow({ where: { id: recipientId } }),
+    );
+  }
+
+  /** The emails sent for a website's checks, newest first, so a failure is visible in the app. */
+  async emailDeliveries(id: string, query: ListEmailDeliveriesQuery): Promise<Page<EmailDelivery>> {
+    await this.getRow(id);
+    const { rows, nextCursor } = await paginateById(query.limit, query.cursor, (args) =>
+      this.deps.db.emailDelivery.findMany({
+        where: {
+          websiteId: id,
+          ...(query.scanId ? { scanId: query.scanId } : {}),
+          ...(query.status ? { status: query.status } : {}),
+        },
+        orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
+        ...args,
+      }),
+    );
+    return {
+      items: rows.map((row) => ({
+        id: row.id,
+        scanId: row.scanId,
+        email: row.email,
+        subject: row.subject,
+        status: row.status,
+        attempts: row.attempts,
+        provider: row.provider,
+        providerMessageId: row.providerMessageId,
+        error: row.error,
+        createdAt: row.createdAt.toISOString(),
+        sentAt: row.sentAt?.toISOString() ?? null,
+      })),
+      nextCursor,
+    };
   }
 
   async removeRecipient(id: string, recipientId: string): Promise<void> {

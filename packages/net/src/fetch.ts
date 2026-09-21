@@ -45,8 +45,10 @@ export interface SafeResponse {
 }
 
 export interface SafeFetchOptions {
-  method?: 'GET' | 'HEAD';
+  method?: 'GET' | 'HEAD' | 'POST';
   headers?: Record<string, string>;
+  /** Sent with a POST. A POST never follows redirects, so the body goes only where it was aimed. */
+  body?: string | Buffer;
   timeoutMs?: number;
   /** Body is truncated beyond this size. Default 2 MB. */
   maxBytes?: number;
@@ -75,6 +77,7 @@ export type HopFn = (
   url: string,
   options: Required<Pick<SafeFetchOptions, 'method' | 'headers' | 'maxBytes'>> & {
     signal: AbortSignal;
+    body?: string | Buffer | undefined;
   },
 ) => Promise<{
   status: number;
@@ -94,7 +97,8 @@ export async function followRedirects(
   options: SafeFetchOptions & { signal: AbortSignal },
 ): Promise<SafeResponse> {
   const method = options.method ?? 'GET';
-  const maxRedirects = options.maxRedirects ?? DEFAULT_MAX_REDIRECTS;
+  // Replaying a POST body at a redirect target would send data somewhere nobody chose.
+  const maxRedirects = method === 'POST' ? 0 : (options.maxRedirects ?? DEFAULT_MAX_REDIRECTS);
   const chain: FetchHop[] = [];
   const seen = new Set<string>();
   let url = startUrl;
@@ -112,6 +116,7 @@ export async function followRedirects(
       headers: options.headers ?? {},
       maxBytes: options.maxBytes ?? DEFAULT_MAX_BYTES,
       signal: options.signal,
+      body: options.body,
     });
 
     const location = response.headers.location;
@@ -248,6 +253,7 @@ export function createSafeClient(options: SafeClientOptions): SafeClient {
       method: hopOptions.method,
       dispatcher,
       signal: hopOptions.signal,
+      ...(hopOptions.body === undefined ? {} : { body: hopOptions.body }),
       headers: {
         'user-agent': options.userAgent,
         accept: '*/*',

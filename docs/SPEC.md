@@ -132,8 +132,10 @@ the dashboard, a session cookie. OpenAPI 3.1 is served at `/api/docs`.
 - **Triggers:** an API key may send `source: "n8n" | "monday"` so the dashboard shows where a
   check came from.
 
-Signed callbacks (`X-Beacon-Signature: sha256=<hmac>`) are sent to a scan's `callbackUrl` when it
-finishes, with retries.
+Signed callbacks (`X-Beacon-Signature: sha256=<hmac of the raw body>`) are sent to a scan's
+`callbackUrl` when it completes, fails or is cancelled. They are retried up to six times over about
+seven hours, with a stable delivery id so a receiver can ignore duplicates. See
+[INTEGRATIONS.md](INTEGRATIONS.md).
 
 ## 8. Email reports
 
@@ -144,14 +146,19 @@ enabled. Never sent for a scan of no website.
   configuration choice.
 - **Template:** a designed HTML email, built with MJML so it survives Outlook and Gmail. Header
   with wordmark, website and date. A score card with a ring and three stat tiles. A trend line
-  with delta and a sparkline of the last 6 to 12 scores as an inline SVG. New issues first, still
-  open issues as a count, up to ten top issues. A prominent "View full report" button, a link to
-  manage preferences, and a footer.
+  with delta and a chart of the last 12 scores, drawn from table cells because Gmail and Outlook
+  strip SVG and images. New issues first, still open issues as a count, up to ten issues, with a
+  problem that repeats across pages shown once. A prominent "View full report" button, links to
+  manage preferences and to unsubscribe, and a footer.
 - **All clear variant:** when there are no new issues and the score is stable or better, a calmer
   design with a green accent, recognisable from the subject line.
 - **Subject:** generated, for example `✅ example-estates.co.uk — health score 94 (no new
   issues)` or `⚠️ example-estates.co.uk — health score 61 (3 new critical issues)`.
 - **Preview:** `pnpm email:preview` renders the template against fixture data without sending.
+- **Failed checks:** a check that could not run (a site that is down) sends a short failure
+  notice, so silence never means a site is fine.
+- **Recipients:** each chooses every report, only reports with new issues, or none, through a link
+  in the email that needs no login. Emails carry `List-Unsubscribe` headers.
 - **Reliability:** every send is logged in `EmailDelivery`; transient failures are retried;
   failures show on the website's page.
 

@@ -57,6 +57,21 @@ enum TriggerType {
   monday
 }
 
+/// Progress of a notification: waiting or being retried, delivered, or given up on.
+enum DeliveryStatus {
+  pending
+  sent
+  failed
+  /// Deliberately not sent, for example a recipient who only wants reports with new issues.
+  skipped
+}
+
+/// What a recipient wants to be emailed about.
+enum NotifyPreference {
+  every_check
+  new_issues_only
+}
+
 enum PageStatus {
   pending
   done
@@ -180,6 +195,8 @@ model Website {
   formMode          FormMode          @default(validate_only)
 
   isActive     Boolean   @default(true)
+  /// Off keeps the recipients but stops the emails, for example while tuning a new site.
+  emailEnabled Boolean   @default(true)
   lastCheckAt  DateTime?
   nextCheckAt  DateTime?
   /// Why the last scheduled run could not start. Cleared by the next run that does.
@@ -190,19 +207,22 @@ model Website {
   owner      User               @relation(fields: [ownerId], references: [id])
   recipients WebsiteRecipient[]
   scans      Scan[]
+  emails     EmailDelivery[]
 
   @@index([isActive, nextCheckAt])
 }
 
 model WebsiteRecipient {
-  id        String   @id
+  id        String           @id
   websiteId String
   email     String
   name      String?
-  isActive  Boolean  @default(true)
-  createdAt DateTime @default(now())
+  isActive  Boolean          @default(true)
+  notify    NotifyPreference @default(every_check)
+  createdAt DateTime         @default(now())
 
-  website Website @relation(fields: [websiteId], references: [id], onDelete: Cascade)
+  website    Website         @relation(fields: [websiteId], references: [id], onDelete: Cascade)
+  deliveries EmailDelivery[]
 
   @@unique([websiteId, email])
 }
@@ -272,6 +292,7 @@ model Scan {
   issues     ScanIssue[]
   results    CheckResult[]
   deliveries WebhookDelivery[]
+  emails     EmailDelivery[]
   links      ScanLink[]
 
   @@unique([hostname, runNumber])
@@ -377,7 +398,7 @@ model ScanLinkSource {
 }
 
 model WebhookDelivery {
-  id             String    @id
+  id             String         @id
   scanId         String
   event          String
   url            String
@@ -385,9 +406,39 @@ model WebhookDelivery {
   responseStatus Int?
   error          String?
   deliveredAt    DateTime?
-  createdAt      DateTime  @default(now())
+  status         DeliveryStatus @default(pending)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @default(now()) @updatedAt
 
   scan Scan @relation(fields: [scanId], references: [id], onDelete: Cascade)
 
+  /// One callback per event, however many times the job is run.
+  @@unique([scanId, event])
   @@index([scanId])
+}
+
+/// One emailed report to one recipient. Kept so a failure shows up on the website, not in a log.
+model EmailDelivery {
+  id                String         @id
+  scanId            String
+  websiteId         String?
+  recipientId       String?
+  email             String
+  subject           String?
+  status            DeliveryStatus @default(pending)
+  attempts          Int            @default(0)
+  provider          String?
+  providerMessageId String?
+  error             String?
+  createdAt         DateTime       @default(now())
+  sentAt            DateTime?
+  updatedAt         DateTime       @updatedAt
+
+  scan      Scan              @relation(fields: [scanId], references: [id], onDelete: Cascade)
+  website   Website?          @relation(fields: [websiteId], references: [id], onDelete: SetNull)
+  recipient WebsiteRecipient? @relation(fields: [recipientId], references: [id], onDelete: SetNull)
+
+  /// A recipient gets one email per scan, however many times the job is run.
+  @@unique([scanId, email])
+  @@index([websiteId, createdAt])
 }

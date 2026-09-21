@@ -67,6 +67,9 @@ local `redis-server` (from `PATH` or `REDIS_SERVER_BIN`) are started on random p
 - Schedule maths is pure and lives in `packages/shared/src/schedule.ts`. Times are UTC. `nextCheckAt` is planned from now, never from a missed time, so downtime never causes a backlog.
 - Page selection is decided by the scan (`pageSelectionMode`, `staticPageUrls`, `pinnedPageUrls`, `sampleSize`), copied from the website when it is created. The runner reads the scan, not the website. Sampling is pure (`scan/page-selection.ts`) and takes an injected random function, so tests are deterministic.
 - The scheduler (`apps/worker/src/scheduler.ts`) claims a due website with a compare-and-set on `nextCheckAt`, so any number of workers can tick. Test it with an injected `now`.
+- Anything that ends a scan announces it (`notifier.notify(scanId)` in the worker, `queue.notifyFinished` in the API). The announcement creates `WebhookDelivery` and `EmailDelivery` rows, which are unique per scan (and recipient) and are the record of what happened. Never send a callback or email straight from the runner.
+- Email content is plain data (`ReportEmailData` in `@beacon/email-templates`) built by the worker and rendered by the package. Template changes are checked with `pnpm email:preview` and the tests in `packages/email-templates`. Escape every string that came from a scanned site, and keep emails to tables, inline styles and no images or web fonts.
+- A callback is signed over its raw body with `callbackSignature`. A link in an email that acts for someone is signed with `signRecipientToken`, and a GET never changes anything, because mail scanners open every link.
 - Commit messages follow Conventional Commits (`feat(api): ...`, `fix(worker): ...`).
 - Never scan a real third-party site in development or tests; use `fixtures/site`. Worker tests keep DNS and Chromium offline with `offlineResolver` and `OFFLINE_BROWSER_ARGS` from `apps/worker/src/test/harness.ts`.
 - A check is one file in `apps/worker/src/checks/` exporting a `Check` (`run` per page, optional `finalize` once per scan), registered in `checks/index.ts`. Keep the analysis in pure functions so it can be unit tested without a browser.
@@ -83,5 +86,7 @@ local `redis-server` (from `PATH` or `REDIS_SERVER_BIN`) are started on random p
 This repo was bootstrapped on Windows without Docker. `pnpm dev:services` and the test kit
 use `embedded-postgres` and `redis-server` from `REDIS_SERVER_BIN` (see `.env.example`).
 Playwright needs `pnpm --filter @beacon/worker exec playwright install chromium` once.
+
+The embedded Postgres is created as UTF-8. A `data/` directory made before that (WIN1252) cannot store emoji or most non-Latin text: delete it and run `pnpm db:migrate` and `pnpm db:seed` again.
 
 On Windows a running api or worker holds the Prisma query engine open, so `prisma generate` (part of `pnpm build` and `pnpm dev`) fails with `EPERM: operation not permitted, rename ...query_engine`. Stop the running api and worker, then rebuild.

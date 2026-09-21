@@ -17,6 +17,12 @@ x-app-env: &app-env
   MAX_CONCURRENT_SCANS: ${MAX_CONCURRENT_SCANS:-3}
   SCAN_RATE_LIMIT_RPS: ${SCAN_RATE_LIMIT_RPS:-10}
   FORM_TEST_EMAIL: ${FORM_TEST_EMAIL:-qa-test@example.com}
+  EMAIL_PROVIDER: ${EMAIL_PROVIDER:-}
+  EMAIL_FROM: ${EMAIL_FROM:-reports@beacon.localhost}
+  EMAIL_FROM_NAME: ${EMAIL_FROM_NAME:-Beacon}
+  RESEND_API_KEY: ${RESEND_API_KEY:-}
+  SMTP_URL: ${SMTP_URL:-}
+  EMAIL_OUTBOX_DIR: /data/storage/outbox
 
 services:
   postgres:

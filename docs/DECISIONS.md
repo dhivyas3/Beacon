@@ -325,3 +325,47 @@ A check that finishes updates the website's `lastCheckAt`. A check that fails al
 ## 2026-09-21 Gap: callbacks are still to be built
 
 The brief says n8n and monday.com "receive the completed callback exactly as before". Scans accept a `callbackUrl` and store it, but nothing sends the callback yet, because that was part of the original phase 6. It moves to phase 7, next to the email report, since both are sent from the same "scan finished" hook.
+
+## 2026-09-22 One "scan finished" announcement drives callbacks and emails
+
+Anything that ends a scan, whether the runner, the reaper failing a dead scan or the API cancelling one, announces it on a `notifications` queue with the job id `finished-<scanId>`, so a scan announced from two places is handled once. That job works out what the scan owes and writes a row for each thing: one `WebhookDelivery` per scan and event, one `EmailDelivery` per scan and recipient, both unique in the database. Only rows created by that run are queued, so running the job twice sends nothing twice. Each delivery is then its own job on the `callbacks` or `emails` queue, retried by BullMQ. The rows are the record: if Redis loses a job the row still says `pending`.
+
+## 2026-09-22 Retries: what is worth another go
+
+A callback or an email is tried up to six times, waiting 30 seconds, 2 minutes, 10 minutes, 1 hour and 6 hours between attempts. Timeouts, network errors, `5xx`, `408`, `425` and `429` are retried. Other `4xx` answers, a redirect and a refused address are final, since the same request would get the same answer: n8n answers `404` for a workflow that is not listening, and retrying that for six hours helps nobody. Email is classified the same way: Resend `429`/`5xx` and SMTP `4xx` are transient, other Resend `4xx` and SMTP `5xx` are permanent. A callback is never sent to a redirect target, because that would send the body somewhere nobody chose.
+
+## 2026-09-22 The callback signature covers the raw body only
+
+`X-Beacon-Signature: sha256=<HMAC-SHA256 of the raw body>`, keyed with the webhook secret, as the settings screen already told people. There is no signed timestamp: replay protection is the stable `X-Beacon-Delivery` id in the header and `deliveryId` in the body, which a receiver can remember. The payload has a `sentAt` that changes per attempt, so retries are not byte-identical. Signing uses Web Crypto so the shared package still bundles for the browser.
+
+## 2026-09-22 Failed checks are emailed too
+
+The brief asks for an email on every completed check. A site that is down at its monthly check would then never tell its owner, which defeats the point of monitoring, so a failed check sends a short failure notice with the reason and the last score that did complete, ignoring a recipient's "only new issues" preference. A failure that was only the worker restarting is not emailed, since it says nothing about the site. Callbacks still fire for it.
+
+## 2026-09-22 What the email counts
+
+The score tiles show the scan's critical and warning counts, the same numbers as the dashboard. The lists and the words ("3 new critical issues") count distinct problems: a broken link in every footer is one problem "and 199 other pages", not two hundred rows. A problem is new when the previous check of the website did not have it. On a first check nothing is new, because there is nothing to be new compared with. Because a sampled check looks at different pages each time, an old problem on a page seen for the first time is labelled new. That is what "new to Beacon" means, and it is stated in the email only as "new since the last check".
+
+## 2026-09-22 A recipient chooses what they get, without a login
+
+Each recipient can have every report, or only reports with something new or a lower score, or none. The link in the email holds the recipient's id and an HMAC of it under a key derived from the webhook secret, so it can act for that person only and cannot be edited to act for another. A GET only ever shows a page, because mail security scanners open every link in a message and would otherwise unsubscribe everyone. Changing a preference is a POST from the page's own form. The one-click address in the `List-Unsubscribe` header (RFC 8058) is a POST too. The pages are plain HTML with no script and a strict content security policy, and they are not in the OpenAPI document. The schedule is the owner's to change, so recipients cannot adjust the frequency, only what they receive.
+
+## 2026-09-22 The email is MJML, and the chart is table cells
+
+MJML 5 (which compiles asynchronously) turns the layout into inlined tables that Outlook and Gmail accept, and the build fails on invalid markup, so the tests catch a broken template. The trend chart is a row of coloured table cells rather than an SVG or a PNG: Gmail and Outlook strip SVG and data-URI images, and remote images are blocked by default in many clients, so any image would show as a broken box for many people. Older bars are grey and the latest is in its score colour, scaled to the recent range so a fall is visible. The score ring is a bordered rounded cell, which is square in clients that ignore `border-radius`. The font stack starts with Inter and falls back to system fonts, without Roboto, because MJML answers a named web font by linking Google Fonts. The email opts out of forced dark mode (`color-scheme: light only`) so the palette is what people see; a dark variant is deferred.
+
+## 2026-09-22 What was and was not checked in real mail clients
+
+Litmus and real Gmail, Outlook and Apple Mail were not available in this environment, so rendering there has not been checked. What was checked: every variant rendered in Chromium at desktop and phone widths and reviewed by eye, strict MJML validation, tests that every email is under Gmail's 102 KB clipping limit, uses tables and inline styles, and contains no script, image, remote stylesheet or font, and that hostile text from a scanned site is escaped. Before relying on it, send the preview to a Gmail, an Outlook and an Apple Mail account (the outbox files can be attached to a test message) and check the score ring, the tiles and the button.
+
+## 2026-09-22 Providers: Resend by default, SMTP for anything else, an outbox for development
+
+Behind one `EmailSender` interface. Resend is used when `RESEND_API_KEY` is set. `smtp` (nodemailer) covers any relay, including Postmark and SES. With nothing configured the `log` provider writes each email to `data/outbox` as HTML, text and JSON, so development works with no account and no risk of mailing anyone. A provider that is chosen but missing its setting gives a sender that fails every attempt with that reason, so it shows on the website instead of vanishing. Blank values in `.env` and in compose count as unset.
+
+## 2026-09-22 The embedded Postgres is created as UTF-8
+
+On Windows the embedded server took its encoding from the system code page (WIN1252), which cannot store an emoji, so saving the subject of an email failed, and any non-Latin text in a scanned page's findings would have failed the same way. Production Postgres is UTF-8. The embedded server is now initialised with `--encoding=UTF8 --locale=C`. A data directory created earlier keeps its old encoding and must be deleted (`data/`) and recreated.
+
+## 2026-09-22 Cancelling announces itself
+
+Cancelling happens in the API, which has no way to send a callback, so it puts the same `finished-<scanId>` announcement on the notifications queue. It is best effort: a cancellation that already happened is never undone because Redis was busy.

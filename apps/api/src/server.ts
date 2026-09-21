@@ -25,6 +25,7 @@ import { apiKeyRoutes } from './routes/api-keys.js';
 import { authRoutes } from './routes/auth.js';
 import { healthRoutes } from './routes/health.js';
 import { scanRoutes } from './routes/scans.js';
+import { emailPreferenceRoutes } from './routes/email-preferences.js';
 import { websiteRoutes } from './routes/websites.js';
 import { settingsRoutes } from './routes/settings.js';
 
@@ -163,6 +164,7 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
       await v1.register(settingsRoutes);
       await v1.register(scanRoutes, { queue, resolver: deps.resolver, storage });
       await v1.register(websiteRoutes, { queue, resolver: deps.resolver });
+      await v1.register(emailPreferenceRoutes);
     },
     { prefix: API_PREFIX },
   );

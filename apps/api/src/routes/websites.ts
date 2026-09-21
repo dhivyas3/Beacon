@@ -3,9 +3,12 @@ import {
   CheckNowBodySchema,
   CreateScanResponseSchema,
   CreateWebsiteBodySchema,
+  EmailDeliverySchema,
   IdParamSchema,
+  ListEmailDeliveriesQuerySchema,
   ListWebsitesQuerySchema,
   PaginationQuerySchema,
+  UpdateRecipientBodySchema,
   UpdateWebsiteBodySchema,
   WebsiteHistoryItemSchema,
   WebsiteRecipientSchema,
@@ -200,7 +203,8 @@ export const websiteRoutes: FastifyPluginAsyncZod<WebsiteRouteOptions> = async (
       schema: {
         tags: ['Websites'],
         summary: 'Add a recipient',
-        description: 'The address receives the emailed report of every completed check.',
+        description:
+          'The address receives the emailed report of every completed check, unless email is turned off for the website or the recipient chooses `new_issues_only` and a check has nothing new.',
         params: IdParamSchema,
         body: AddRecipientBodySchema,
         response: { 201: WebsiteRecipientSchema, ...errorResponses(400, 401, 403, 404, 409, 429) },
@@ -210,6 +214,44 @@ export const websiteRoutes: FastifyPluginAsyncZod<WebsiteRouteOptions> = async (
       const recipient = await websites.addRecipient(request.params.id, request.body);
       return reply.code(201).send(recipient);
     },
+  );
+
+  app.patch(
+    '/websites/:id/recipients/:recipientId',
+    {
+      config: { auth: 'scans:write' },
+      schema: {
+        tags: ['Websites'],
+        summary: 'Update a recipient',
+        description:
+          'Change the name, pause the emails with `isActive: false` without removing the address, or choose `notify`: every report, or only reports with new issues.',
+        params: RecipientParamsSchema,
+        body: UpdateRecipientBodySchema,
+        response: { 200: WebsiteRecipientSchema, ...errorResponses(400, 401, 403, 404, 429) },
+      },
+    },
+    async (request) =>
+      websites.updateRecipient(request.params.id, request.params.recipientId, request.body),
+  );
+
+  app.get(
+    '/websites/:id/email-deliveries',
+    {
+      config: { auth: 'scans:read' },
+      schema: {
+        tags: ['Websites'],
+        summary: 'Emails sent for a website',
+        description:
+          'Every report email, newest first, with whether it was sent, is being retried, failed or was skipped, and why. This is where a failed email shows up.',
+        params: IdParamSchema,
+        querystring: ListEmailDeliveriesQuerySchema,
+        response: {
+          200: pageOf(EmailDeliverySchema),
+          ...errorResponses(400, 401, 403, 404, 429),
+        },
+      },
+    },
+    async (request) => websites.emailDeliveries(request.params.id, request.query),
   );
 
   app.delete(

@@ -45,6 +45,20 @@ export const CommonEnvSchema = z.object({
   SCAN_RATE_LIMIT_RPS: z.coerce.number().min(0.5).max(100).default(10),
   STAGING_PATTERNS: csvOf([...DEFAULT_STAGING_PATTERNS].join(',')),
   FORM_TEST_EMAIL: z.email().default('qa-test@example.com'),
+
+  /**
+   * How reports are emailed. `resend` and `smtp` send for real, `log` writes each email to
+   * EMAIL_OUTBOX_DIR as an HTML file, which is what development uses. When unset it is `resend` if
+   * RESEND_API_KEY is set, and `log` otherwise.
+   */
+  EMAIL_PROVIDER: z.enum(['resend', 'smtp', 'log']).optional(),
+  /** The sender address. Must be on a domain the provider has verified. */
+  EMAIL_FROM: z.email().default('reports@beacon.localhost'),
+  EMAIL_FROM_NAME: z.string().min(1).max(80).default('Beacon'),
+  RESEND_API_KEY: z.string().min(1).optional(),
+  /** For `smtp`: smtp://user:password@host:587, or smtps:// for implicit TLS. */
+  SMTP_URL: z.string().min(1).optional(),
+  EMAIL_OUTBOX_DIR: z.string().min(1).default('./data/outbox'),
   DEFAULT_CHECKS: csvOf([...CHECK_TYPES].join(',')).pipe(z.array(z.enum(CHECK_TYPES)).min(1)),
 });
 export type CommonEnv = z.infer<typeof CommonEnvSchema>;
@@ -63,7 +77,10 @@ export function parseEnv<T extends z.ZodType>(
   schema: T,
   env: Record<string, string | undefined>,
 ): z.infer<T> {
-  const result = schema.safeParse(env);
+  // A variable that is present but blank, as `EMAIL_PROVIDER=` in a .env file or an empty compose
+  // substitution, means the same as one that is not set.
+  const present = Object.fromEntries(Object.entries(env).filter(([, value]) => value !== ''));
+  const result = schema.safeParse(present);
   if (!result.success) {
     throw new EnvError(
       result.error.issues.map((issue) => `${issue.path.join('.') || 'env'}: ${issue.message}`),

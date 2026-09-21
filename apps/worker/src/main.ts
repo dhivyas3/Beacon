@@ -1,9 +1,14 @@
 import { createDb } from '@beacon/db';
+import { createSafeClient } from '@beacon/net';
+import { USER_AGENT } from '@beacon/shared';
 import { LocalStorage } from '@beacon/storage';
 import { Queue, Worker } from 'bullmq';
 import { Redis } from 'ioredis';
 import { loadConfig } from './config.js';
 import { startScanWorker } from './jobs/scan-worker.js';
+import { createEmailSender, resolveProvider } from './notifications/email-sender.js';
+import { startNotifier } from './notifications/notifier.js';
+import { SHUTDOWN_FAILURE } from './scan/runner.js';
 import { createLogger } from './logger.js';
 import type { ScanJobData } from '@beacon/shared';
 import { QUEUES, REAPER_INTERVAL_MS, REAPER_SCHEDULER_ID } from './queues.js';
@@ -25,6 +30,31 @@ async function main(): Promise<void> {
   const connection = new Redis(config.REDIS_URL, { maxRetriesPerRequest: null });
   const shutdown = new AbortController();
 
+  // Callbacks and emails. Every scan that finishes, by any route, is announced to the notifier.
+  const sender = createEmailSender(config, log);
+  log.info({ provider: sender.name, configured: resolveProvider(config) }, 'email provider');
+  if (sender.name === 'none')
+    log.error('Email is misconfigured, so reports cannot be sent. See the EMAIL_* settings.');
+  const notifier = startNotifier(
+    {
+      db,
+      config,
+      log,
+      sender,
+      client: createSafeClient({ allowLocal: config.ALLOW_LOCAL_TARGETS, userAgent: USER_AGENT }),
+      quietFailureMessage: SHUTDOWN_FAILURE,
+    },
+    { connection, prefix: config.QUEUE_PREFIX, log },
+  );
+  const announce = async (scanId: string): Promise<void> => {
+    try {
+      await notifier.notify(scanId);
+    } catch (error) {
+      // A notification problem must never turn a finished scan into a failed one.
+      log.error({ err: error, scanId }, 'could not announce a finished scan');
+    }
+  };
+
   const scanWorker = startScanWorker({
     db,
     config,
@@ -32,6 +62,7 @@ async function main(): Promise<void> {
     log,
     connection,
     shutdownSignal: shutdown.signal,
+    runner: { onFinished: (scanId) => announce(scanId) },
   });
 
   // The scheduler starts scans itself, so it needs the producer side of the scan queue too.
@@ -67,7 +98,10 @@ async function main(): Promise<void> {
     QUEUES.maintenance,
     async (job) => {
       if (job.name === SCHEDULER_JOB_NAME) await runSchedulerTick(scheduler);
-      else await reapStaleScans(db, log);
+      else {
+        const { failedScanIds } = await reapStaleScans(db, log);
+        for (const scanId of failedScanIds) await announce(scanId);
+      }
     },
     { connection, prefix: config.QUEUE_PREFIX, concurrency: 1 },
   );
@@ -97,6 +131,7 @@ async function main(): Promise<void> {
     // Running scans are failed with a clear message instead of being left for the reaper.
     shutdown.abort();
     await scanWorker.close();
+    await notifier.close();
     await maintenanceWorker.close();
     await maintenance.close();
     await scanQueue.waitUntilReady().catch(() => undefined);

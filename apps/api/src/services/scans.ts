@@ -360,6 +360,9 @@ export class ScanService {
       );
     }
     await queue.remove(id);
+    // Someone may be waiting for this cancellation, such as an n8n workflow. Announcing it must not
+    // undo a cancellation that already happened.
+    await queue.notifyFinished(id).catch(() => undefined);
     return this.get(id);
   }
 

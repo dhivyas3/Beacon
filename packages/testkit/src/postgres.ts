@@ -34,6 +34,9 @@ export async function startEmbeddedPostgres(options: StartPostgresOptions = {}):
     password: PASSWORD,
     port,
     persistent,
+    // The server takes its encoding from the Windows locale, which is a legacy code page that
+    // cannot store an emoji or most non-Latin text. Production Postgres is UTF-8, so is this.
+    initdbFlags: ['--encoding=UTF8', '--locale=C'],
     onLog: options.quiet === false ? (message) => console.log(String(message)) : () => undefined,
     onError: (message) => console.error(String(message)),
   });

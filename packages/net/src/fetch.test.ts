@@ -251,3 +251,78 @@ describe('followRedirects', () => {
     expect(res.chain).toHaveLength(1);
   });
 });
+
+describe('POST', () => {
+  let poster: Server;
+  let url: string;
+  const seen: { method?: string; body: string; type?: string; custom?: string }[] = [];
+
+  beforeAll(async () => {
+    poster = createServer((req, res) => {
+      const chunks: Buffer[] = [];
+      req.on('data', (chunk: Buffer) => chunks.push(chunk));
+      req.on('end', () => {
+        seen.push({
+          method: req.method,
+          body: Buffer.concat(chunks).toString('utf8'),
+          type: String(req.headers['content-type']),
+          custom: String(req.headers['x-beacon-event']),
+        });
+        if (req.url === '/moved') {
+          res.writeHead(307, { location: '/elsewhere' });
+          res.end();
+          return;
+        }
+        res.writeHead(202, { 'content-type': 'text/plain' });
+        res.end('accepted');
+      });
+    });
+    await new Promise<void>((resolve) => poster.listen(0, '127.0.0.1', resolve));
+    url = `http://127.0.0.1:${(poster.address() as AddressInfo).port}`;
+  });
+
+  afterAll(async () => {
+    poster.closeAllConnections();
+    await new Promise((resolve) => poster.close(resolve));
+  });
+
+  it('sends the body and headers and reads the answer', async () => {
+    const local = createSafeClient({ allowLocal: true, userAgent: 'BeaconBot/1.0' });
+    const res = await local.fetch(`${url}/hook`, {
+      method: 'POST',
+      body: '{"event":"scan.completed"}',
+      headers: { 'content-type': 'application/json', 'x-beacon-event': 'scan.completed' },
+    });
+    await local.close();
+    expect(res.status).toBe(202);
+    expect(res.body?.toString('utf8')).toBe('accepted');
+    expect(seen.at(-1)).toEqual({
+      method: 'POST',
+      body: '{"event":"scan.completed"}',
+      type: 'application/json',
+      custom: 'scan.completed',
+    });
+  });
+
+  it('never follows a redirect, so the body goes only where it was aimed', async () => {
+    const before = seen.length;
+    const local = createSafeClient({ allowLocal: true, userAgent: 'BeaconBot/1.0' });
+    const res = await local.fetch(`${url}/moved`, {
+      method: 'POST',
+      body: 'secret',
+      maxRedirects: 10,
+    });
+    await local.close();
+    expect(res.status).toBe(307);
+    expect(res.chain).toEqual([]);
+    expect(seen.length - before).toBe(1);
+  });
+
+  it('is still refused for a private address unless local targets are allowed', async () => {
+    const strict = createSafeClient({ allowLocal: false, userAgent: 'BeaconBot/1.0' });
+    await expect(strict.fetch(`${url}/hook`, { method: 'POST', body: 'x' })).rejects.toBeInstanceOf(
+      FetchError,
+    );
+    await strict.close();
+  });
+});

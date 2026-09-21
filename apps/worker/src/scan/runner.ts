@@ -59,7 +59,7 @@ export interface RunnerDeps {
 
 const GENERIC_FAILURE =
   'The scan stopped because of an unexpected error. An admin can find details in the worker logs.';
-const SHUTDOWN_FAILURE = 'The worker restarted while this scan was running. Start it again.';
+export const SHUTDOWN_FAILURE = 'The worker restarted while this scan was running. Start it again.';
 
 function sameUrl(a: string, b: string): boolean {
   return (normalizeUrl(a) ?? a) === (normalizeUrl(b) ?? b);

@@ -2,7 +2,7 @@
 
 Beacon keeps watch on the health of websites. Register a site once and Beacon checks it on a schedule, usually on a handful of representative pages, then reports what it found. One-off full scans, started from the dashboard, the API, n8n or monday.com, still work and are one way of triggering a check among several. Every check discovers pages, runs the checks in the background, streams progress and produces a report.
 
-> **Status: Phase 6 of 9 (websites, scheduling and page selection).** The product is now called Beacon. You can register a website through the API, give it a schedule and a page selection, and Beacon checks it on time. Emailed reports and signed callbacks arrive in Phase 7, the dashboard screens for websites in Phase 8, and the n8n guides and end-to-end test in Phase 9. See [docs/SPEC.md](docs/SPEC.md) for the product and [docs/PLAN.md](docs/PLAN.md) for the order of work. This README describes what exists today.
+> **Status: Phase 7 of 9 (email reports and callbacks).** Registered websites are checked on a schedule and the report is emailed to their recipients, with a designed HTML email, retries and a delivery log. Scans can call a URL back, signed, when they finish. The dashboard screens for websites arrive in Phase 8, and the n8n guides and end-to-end test in Phase 9. See [docs/SPEC.md](docs/SPEC.md) for the product and [docs/PLAN.md](docs/PLAN.md) for the order of work. This README describes what exists today.
 
 ## Quick start
 
@@ -122,6 +122,58 @@ curl -s -H "Authorization: Bearer $KEY" http://localhost:3000/api/v1/websites/we
 
 `POST /scans` also accepts a `websiteId`, which inherits the website's checks, form mode and page selection unless the request overrides them. Send `"source": "n8n"` or `"monday"` so the dashboard shows where a check came from.
 
+### Email reports
+
+When a check of a website completes, Beacon emails a designed report to each active recipient: the health score, the trend against the last check, what is new, and a button to the full report. A check with nothing new and a score that held or improved gets a calmer green "all clear" email, and the subject line says which you have before you open it:
+
+```
+✅ example-estates.co.uk — health score 94 (no new issues)
+⚠️ example-estates.co.uk — health score 61 (3 new critical issues)
+🚨 example-estates.co.uk — the check could not run
+```
+
+A check that fails, for example because the site is down, emails a failure notice instead. Cancelled scans send nothing, and neither do scans that belong to no website.
+
+Set the provider in `.env`:
+
+| `EMAIL_PROVIDER` | Needs | Notes |
+| --- | --- | --- |
+| `resend` (the default when a key is set) | `RESEND_API_KEY`, `EMAIL_FROM` | Verify your sending domain in Resend first, or mail is refused |
+| `smtp` | `SMTP_URL`, `EMAIL_FROM` | Any SMTP server. Postmark and Amazon SES both offer SMTP relays |
+| `log` (the default with no key) | nothing | Writes each email to `data/outbox` as HTML, text and JSON. Open the HTML in a browser |
+
+Each website has an email switch (`emailEnabled`) that keeps its recipients but stops the emails, and each recipient can choose to get every report or only reports with new issues. Every email carries links to manage that and to unsubscribe, plus the `List-Unsubscribe` headers that let Gmail and Apple Mail show their own unsubscribe button. Every send is recorded (`GET /websites/:id/email-deliveries`), transient failures are retried, and a failure shows on the website (`emailStatus`) rather than in a log.
+
+To work on the design without sending anything:
+
+```bash
+pnpm email:preview     # http://127.0.0.1:4020, every variant from sample data, live reload
+```
+
+### Callbacks
+
+Give `POST /scans` (or `POST /websites/:id/check-now`) a `callbackUrl` and Beacon POSTs a JSON body to it when the scan completes, fails or is cancelled. The body is signed with the webhook secret from Settings, using HMAC-SHA256 over the exact bytes sent:
+
+```
+X-Beacon-Signature: sha256=<hex>
+X-Beacon-Event: scan.completed        (or scan.failed, scan.cancelled)
+X-Beacon-Delivery: whd_...            (the same on every retry, so you can ignore duplicates)
+X-Beacon-Attempt: 1
+```
+
+Verify it before parsing the body:
+
+```js
+import { createHmac, timingSafeEqual } from 'node:crypto';
+
+function verify(rawBody, header, secret) {
+  const expected = 'sha256=' + createHmac('sha256', secret).update(rawBody).digest('hex');
+  return header?.length === expected.length && timingSafeEqual(Buffer.from(header), Buffer.from(expected));
+}
+```
+
+Any `2xx` counts as delivered. A `5xx`, `408`, `429` or a network error is retried up to six attempts, waiting 30 seconds, 2 minutes, 10 minutes, 1 hour and 6 hours. Any other status, including a `404` and a redirect (which is never followed), is final. The body has the scan's status, score, score change, counts, your `metadata` echoed back untouched, and links to the report and to the API. The schema is `CallbackPayload` in the OpenAPI document.
+
 ## Architecture
 
 ```mermaid
@@ -145,10 +197,11 @@ flowchart LR
 | Package | Purpose |
 | --- | --- |
 | `apps/api` | Public `/api/v1` API, sessions and API keys, OpenAPI at `/api/docs` |
-| `apps/worker` | Scan engine: discovery and page selection, browser pool, checks, link verification, progress, stale-scan reaper, and the scheduler that starts due websites |
+| `apps/worker` | Scan engine: discovery and page selection, browser pool, checks, link verification, progress, stale-scan reaper, , the scheduler that starts due websites, and the workers that send callbacks and emails |
 | `apps/web` | React 19 dashboard: Vite, React Router, TanStack Query, Tailwind, Radix, Recharts |
 | `packages/shared` | Zod schemas (the API contract), progress and ETA maths, health score, URL utilities, env parsing |
 | `packages/net` | SSRF guard and the HTTP client for every user-supplied URL: DNS pinning, redirect re-checks, size and time limits |
+| `packages/email-templates` | The report email: MJML template, subject lines, plain-text version and the preview server |
 | `packages/storage` | Storage interface with a local disk implementation, used for screenshots |
 | `fixtures/site` | Deterministic site with known defects, used by tests and for manual trials |
 | `packages/db` | Prisma schema, migrations, client, admin seed |

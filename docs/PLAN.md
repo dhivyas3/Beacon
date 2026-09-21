@@ -65,7 +65,8 @@ across them, because the email report needs the comparison and the completion ho
    `pnpm email:preview`, subject and "all clear" variants, sparkline, "new since last
    check"; signed callbacks with retries + `WebhookDelivery` (n8n and monday.com), sent from
    the same completion hook; previous-scan comparison made website aware (new / still open /
-   fixed).
+   fixed). Delivered, with two additions: failed checks are emailed too, and recipients can choose
+   what they receive and unsubscribe without a login (see DECISIONS.md, 'Phase 7' entries).
 8. **Websites UI and dashboard overview** - Websites nav, list, add/edit form (schedule, page
    selection, checks, recipients, email toggle), detail page with score chart and history,
    check-now, report breadcrumb and trend badge, overview dashboard of website cards, SSE

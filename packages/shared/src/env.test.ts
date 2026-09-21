@@ -44,3 +44,42 @@ describe('parseEnv', () => {
     }
   });
 });
+
+describe('email settings', () => {
+  const base = {
+    DATABASE_URL: 'postgresql://x',
+    WEBHOOK_SIGNING_SECRET: 'a-long-test-secret-0123456789',
+  };
+
+  it('treats blank values as unset, so an empty line in .env or compose changes nothing', () => {
+    const env = parseEnv(CommonEnvSchema, {
+      ...base,
+      EMAIL_PROVIDER: '',
+      RESEND_API_KEY: '',
+      SMTP_URL: '',
+      EMAIL_FROM: '',
+    });
+    expect(env.EMAIL_PROVIDER).toBeUndefined();
+    expect(env.RESEND_API_KEY).toBeUndefined();
+    expect(env.SMTP_URL).toBeUndefined();
+    expect(env.EMAIL_FROM).toBe('reports@beacon.localhost');
+    expect(env.EMAIL_FROM_NAME).toBe('Beacon');
+    expect(env.EMAIL_OUTBOX_DIR).toBe('./data/outbox');
+  });
+
+  it('reads a provider and its settings, and refuses an unknown provider or a bad sender', () => {
+    const env = parseEnv(CommonEnvSchema, {
+      ...base,
+      EMAIL_PROVIDER: 'smtp',
+      SMTP_URL: 'smtp://u:p@mail.example.com:587',
+      EMAIL_FROM: 'reports@example.com',
+    });
+    expect(env).toMatchObject({ EMAIL_PROVIDER: 'smtp', EMAIL_FROM: 'reports@example.com' });
+    expect(() => parseEnv(CommonEnvSchema, { ...base, EMAIL_PROVIDER: 'carrier-pigeon' })).toThrow(
+      /EMAIL_PROVIDER/,
+    );
+    expect(() => parseEnv(CommonEnvSchema, { ...base, EMAIL_FROM: 'not-an-address' })).toThrow(
+      /EMAIL_FROM/,
+    );
+  });
+});
