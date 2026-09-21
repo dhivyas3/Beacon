@@ -393,3 +393,27 @@ The CSV has one row per issue occurrence, open and ignored, most severe first, w
 ## 2026-09-23 "Fixed since the last check" has one definition
 
 The count on the report and the list under it come from the same query, so they cannot disagree: problems the previous check of the same website had that this scan does not have. For a scan of a sample only pages checked both times count, because a page that was not looked at again is unseen, not fixed, and the report says so.
+
+## 2026-09-24 The end-to-end suite runs the real system on its own ports
+
+`pnpm e2e` starts an embedded Postgres, a Redis, the fixture site, the API, the worker and the Vite dev server as child processes (`e2e/src/stack.ts`), on ports different from `pnpm dev`, so both can run at once, with its own database, queue prefix, storage and email outbox under `e2e/.tmp`. Nothing is mocked: the specs drive a browser through registering a website, checking it, reading the report, exporting it and finding the emails in the outbox, and call the API as n8n would, with a receiver that verifies the callback signature. `ALLOW_LOCAL_TARGETS` is on for that stack only, because the fixture site and the receiver are on loopback; the only site ever scanned is the fixture. The specs run in order in one worker (the first registers the website that the later ones use), so a failure in the first hides the rest, and the run takes about ninety seconds. It is not part of `pnpm test`, which stays fast and needs no browser.
+
+## 2026-09-24 What the end-to-end run found
+
+Two real bugs that 150 unit tests did not. The live-events hook wrote a scan's final `progress` event into the cache, which made the scan no longer active, which switched its own stream off before the `done` event arrived, so a report followed live finished with no per-check results until a manual refresh. It now loads the whole scan on a final progress event and stays connected until `done`. And a table wider than a phone, inside a scroller, still stretched the page, because its visually hidden text is absolutely positioned and escaped the scroller's clip: `.scroll-x` is now positioned. Lesson kept in CLAUDE.md: a fake `EventSource` in a unit test proves the handlers, not the sequence a real server produces.
+
+## 2026-09-24 Accessibility: checked by a tool in both themes, and by hand for what a tool cannot see
+
+axe-core (WCAG 2.0, 2.1 and 2.2 level A and AA) runs in the end-to-end suite over every screen in the light and dark themes, and over the open command palette, and fails on any violation. It found one: white text on the dark theme's accent colour was 4.47:1, so the dark accent is a shade deeper (`#5c5fee`, 4.85:1) and its hover state deeper still (5.57:1) rather than lighter, because the text has to keep its contrast. The suite also checks that nothing scrolls sideways at 390 px on any screen, that the first Tab stop is the skip link, and that every control that takes keyboard focus shows an outline. Not checked by a person with a screen reader: the event stream is announced only by the progress bar's own label, and the command palette follows the combobox and listbox pattern (`aria-activedescendant`) but has not been used with NVDA, JAWS or VoiceOver.
+
+## 2026-09-24 The command palette is hand-written
+
+Ctrl+K (Cmd+K on a Mac), or the Search button in the header, opens a dialog with a search box over a list of pages, actions, websites (open, or check now) and appearance and sign-out commands. It is a Radix dialog with a combobox and listbox written by hand, about 250 lines, instead of a dependency such as cmdk, so it follows the rest of the app's components and adds nothing to the bundle. Matching is pure and tested (`lib/commands.ts`): every word must match, the start of the label ranks first, then a word in it, then the hint and keywords, and ties keep their order so results do not shuffle as you type. Websites are only fetched once the palette is opened.
+
+## 2026-09-24 The n8n workflows use core nodes and keep the secret in the Code node
+
+Nothing to install: Schedule Trigger, Webhook, Set, Code, IF, Respond to Webhook and HTTP Request. monday.com is reached with its GraphQL API (`create_update`) rather than the monday.com node, whose parameter names are easy to get wrong in hand-written JSON. The callback workflow replies before it does any work (Beacon waits fifteen seconds and retries anything slower), answers `401` to a bad signature so Beacon does not retry it, and keeps the webhook secret in the Code node, because recent n8n versions block environment access from nodes by default and Variables are a paid feature. A test in `packages/shared` runs that Code node against signatures made by `callbackSignature` and checks the graph of every workflow. What is not checked: importing them into a running n8n. That was not available here.
+
+## 2026-09-24 Deployment: Caddy in front of the web container, unverified
+
+`deploy/Caddyfile` and `deploy/docker-compose.caddy.yml` put Caddy (automatic HTTPS) in front of the existing web container, which already proxies `/api` to the API, and stop publishing the web port. `flush_interval -1` keeps the event stream flowing. Docker was not available, so neither the base compose file nor this override has been run, as with the earlier phases; `docs/DEPLOYMENT.md` says so at the top. The pieces they start are the ones `pnpm e2e` runs.

@@ -1,8 +1,7 @@
 # Integrations
 
-How to start Beacon checks from other systems and hear back when they finish. This page covers
-the API side that exists today: starting checks, callbacks and email. Ready-made n8n and
-monday.com workflows, including the pattern where n8n owns the schedule, arrive in phase 9.
+How to start Beacon checks from other systems and hear back when they finish: the API calls,
+signed callbacks, email, and ready-made n8n and monday.com workflows.
 
 ## Starting a check
 
@@ -125,3 +124,63 @@ A registered website emails its recipients after every completed check. Set the 
 
 `notify` is `every_check` or `new_issues_only`. Recipients change this themselves from the link in
 each email, which also lets them unsubscribe.
+
+## n8n and monday.com
+
+Three workflows are in [docs/n8n](n8n). Import each with **Workflows > Import from file**, then
+open it and read the note on the canvas. They use only core nodes (Schedule Trigger, Webhook, Set,
+Code, IF, HTTP Request), so there is nothing to install.
+
+| File | What it does |
+| --- | --- |
+| [beacon-scheduled-check.json](n8n/beacon-scheduled-check.json) | A schedule in n8n starts a check of a website through `check-now` |
+| [beacon-callback.json](n8n/beacon-callback.json) | Receives the completed callback, verifies its signature, replies, and posts the result to a monday.com item |
+| [monday-request-scan.json](n8n/monday-request-scan.json) | A monday.com item asks for a one-off scan of a URL, and the callback comes back to the item |
+
+What every workflow needs:
+
+- A **Header Auth** credential named `Beacon API key`: header `Authorization`, value
+  `Bearer bcn_...`. Create the key in Settings with `scans:read` and `scans:write`.
+- For the callback: a **Header Auth** credential `monday.com API` (header `Authorization`, value
+  your monday.com API token), the webhook secret from Settings pasted into the Code node, and
+  n8n started with `NODE_FUNCTION_ALLOW_BUILTIN=crypto`, because a Code node cannot load
+  `crypto` otherwise.
+- The **production** webhook URL of the callback workflow (not the test URL) as `callbackUrl`.
+  Activate the workflow first.
+
+### Who owns the schedule
+
+Two ways to run the same checks, and you should pick one for each website:
+
+- **Beacon owns it.** Set the website's frequency in Beacon (monthly, weekly, daily). Beacon
+  emails the report itself. Use the callback workflow only if you also want a note in monday.com.
+- **n8n owns it.** Set the website's frequency to **Only when I start it**, and let
+  *Beacon: scheduled check* start each check. Beacon still runs the check, sends the email and
+  calls back. This suits a team that already schedules everything in n8n, or wants a check to
+  follow another step, such as a deploy.
+
+Never do both for one website: it would be checked twice.
+
+### monday.com
+
+monday.com does not call Beacon directly. An automation on the board (for example *When status
+changes to "Ready to check", send a webhook*) calls the *scan requested* workflow with the item id
+and the site address, and the callback workflow writes the result back as an update on that item
+with the health score, the counts and the report link. Beacon never sees monday.com: the item id
+travels in `metadata` and comes back unchanged in the callback.
+
+The `Idempotency-Key` is `monday-<item id>`, so a webhook monday.com sends twice starts one scan.
+A site that already has a scan running answers `409`, and the workflow fails visibly in n8n rather
+than queueing a second.
+
+### Checking the callback signature in your own code
+
+The callback workflow's Code node is the reference. It reads the raw request body (turn on
+**Raw Body** in the Webhook node), computes `sha256=` plus the HMAC-SHA256 of it with the webhook
+secret, and compares it with `X-Beacon-Signature` in constant time before it parses anything. The
+workflows are tested: the test suite runs that Code node against a real signature, and against a
+wrong secret, a changed body and a missing header.
+
+The workflows have not been imported into a running n8n here, so a parameter name may differ in
+your n8n version. If a node shows a warning after import, its setting is in the same place in the
+n8n editor; the values are in the JSON.

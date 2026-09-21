@@ -1,0 +1,111 @@
+{
+  "name": "Beacon: scan requested from monday.com",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Beacon: a monday.com item asks for a scan\n\nA monday.com automation (**When status changes to ..., send a webhook**) or any other caller POSTs `{ \"itemId\": \"1234567890\", \"url\": \"https://www.example-estates.co.uk\" }` here. Beacon runs a one-off scan and the **Beacon: callback** workflow posts the result back to the item.\n\n1. Create a **Header Auth** credential `Beacon API key` (name `Authorization`, value `Bearer bcn_...`).\n2. Set `beaconUrl` and `callbackUrl` in **Config**.\n3. The `Idempotency-Key` is built from the item id, so a webhook that monday.com sends twice starts one scan. If the site already has a scan running, Beacon answers `409` and this workflow fails visibly.\n4. Use the **production** webhook URL in monday.com, and keep it secret: anyone with it can start scans of your allowed domains.",
+        "height": 380,
+        "width": 460
+      },
+      "id": "b3a3c3d3-0001-4000-8000-000000000001",
+      "name": "Read me",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-200, -240]
+    },
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "beacon-request-scan",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "b3a3c3d3-0002-4000-8000-000000000002",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [320, 120],
+      "webhookId": "beacon-request-scan"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c1",
+              "name": "beaconUrl",
+              "value": "https://beacon.example.com",
+              "type": "string"
+            },
+            {
+              "id": "c2",
+              "name": "callbackUrl",
+              "value": "https://n8n.example.com/webhook/beacon-callback",
+              "type": "string"
+            },
+            {
+              "id": "c3",
+              "name": "itemId",
+              "value": "={{ String($json.body.itemId) }}",
+              "type": "string"
+            },
+            {
+              "id": "c4",
+              "name": "url",
+              "value": "={{ $json.body.url }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b3a3c3d3-0003-4000-8000-000000000003",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [540, 120]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.beaconUrl }}/api/v1/scans",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Idempotency-Key",
+              "value": "={{ 'monday-' + $json.itemId }}"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ url: $json.url, source: 'monday', callbackUrl: $json.callbackUrl, metadata: { mondayItemId: $json.itemId } }) }}",
+        "options": {}
+      },
+      "id": "b3a3c3d3-0004-4000-8000-000000000004",
+      "name": "Start scan",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [760, 120],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_ME",
+          "name": "Beacon API key"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [[{ "node": "Config", "type": "main", "index": 0 }]]
+    },
+    "Config": {
+      "main": [[{ "node": "Start scan", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "active": false
+}

@@ -25,7 +25,7 @@ pnpm typecheck               # tsc --noEmit in every package
 pnpm lint                    # eslint + prettier --check
 pnpm format                  # prettier --write
 pnpm test                    # vitest in every package (needs Postgres + Redis, see below)
-pnpm e2e                     # (Phase 9) Playwright end-to-end suite
+pnpm e2e                     # Playwright end-to-end suite: starts the whole system on its own ports (about 90 s)
 pnpm email:preview           # (Phase 7) render the email template against fixture data
 pnpm dev                     # api + worker + web in watch mode
 pnpm dev:services            # embedded Postgres (5432) + Redis (6379) without Docker
@@ -72,6 +72,10 @@ local `redis-server` (from `PATH` or `REDIS_SERVER_BIN`) are started on random p
 - A callback is signed over its raw body with `callbackSignature`. A link in an email that acts for someone is signed with `signRecipientToken`, and a GET never changes anything, because mail scanners open every link.
 - A route that streams (`scan-exports.ts`, `/events`) answers 404 and auth failures as normal JSON first, then `reply.hijack()`s and writes to `reply.raw`. It reads the database on an interval rather than subscribing to anything, and ends when the client closes. Anything a scanned site controls that reaches a CSV goes through `csvCell` (formula protection), and anything that reaches the PDF through `pdfSafe`.
 - Web routes: `/` overview, `/websites`, `/websites/new`, `/websites/:id`, `/websites/:id/edit`, `/scans` (every scan and the one-off scan box), `/scans/:id` (a report, linked from emails and callbacks, so never rename it), `/settings`.
+- End-to-end specs (`e2e/tests`) run in order in one worker and share what the first creates. `e2e/src/stack.ts` starts everything and is the only place `ALLOW_LOCAL_TARGETS` is on besides your own `.env`. Add a spec there when a change spans the browser, the API and the worker. A unit test with a fake `EventSource` or `fetch` proves the handlers, not the sequence a real server produces, so anything streamed or time-ordered wants an e2e check as well.
+- Every screen has to pass axe in both themes (`e2e/tests/04-accessibility.spec.ts`) and not scroll sideways at 390 px. A horizontally scrolling table goes in a `.scroll-x` container, which is positioned so hidden text inside it is clipped too. Text on `bg-accent` needs 4.5:1, so check the dark token before changing it.
+- The command palette (`components/command-palette.tsx`) lists commands built in `useCommands`. A new page or action worth reaching from the keyboard is one more entry there; matching lives in `lib/commands.ts`.
+- The n8n workflows in `docs/n8n` are tested by `packages/shared/src/n8n-workflows.test.ts`. Change the signature code there and the test runs it against real signatures.
 - Commit messages follow Conventional Commits (`feat(api): ...`, `fix(worker): ...`).
 - Never scan a real third-party site in development or tests; use `fixtures/site`. Worker tests keep DNS and Chromium offline with `offlineResolver` and `OFFLINE_BROWSER_ARGS` from `apps/worker/src/test/harness.ts`.
 - A check is one file in `apps/worker/src/checks/` exporting a `Check` (`run` per page, optional `finalize` once per scan), registered in `checks/index.ts`. Keep the analysis in pure functions so it can be unit tested without a browser.

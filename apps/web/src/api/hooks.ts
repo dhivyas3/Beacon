@@ -123,6 +123,14 @@ export function useScanEvents(scanId: string, enabled: boolean): void {
     source.addEventListener('progress', (event) => {
       const data = parseEvent<ProgressEvent>(event);
       if (!data) return;
+      // A finished scan is not written into the cache from here. The stream carries progress only,
+      // so the report would render with no per-check results, and the status change would switch
+      // this stream off before its own `done` event arrived. Load the whole scan instead, and let
+      // the stream stay open until `done`.
+      if (!isActiveStatus(data.status)) {
+        void client.invalidateQueries({ queryKey: keys.scan(scanId) });
+        return;
+      }
       client.setQueryData<ScanDetail>(keys.scan(scanId), (current) =>
         current
           ? { ...current, status: data.status, progress: data.progress, summary: data.summary }
@@ -226,9 +234,10 @@ export function useFixedIssues(scanId: string, enabled: boolean) {
 
 // ---- Websites -----------------------------------------------------------------------------------
 
-export function useWebsites(filters: WebsiteListFilters) {
+export function useWebsites(filters: WebsiteListFilters, enabled = true) {
   return useInfiniteQuery({
     queryKey: keys.websites(filters),
+    enabled,
     queryFn: ({ pageParam }) => api.websites.list(filters, pageParam),
     initialPageParam: undefined as string | undefined,
     getNextPageParam: (last) => last.nextCursor ?? undefined,

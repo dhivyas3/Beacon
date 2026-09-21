@@ -1,0 +1,18 @@
+# Caddy in front of Beacon. It gets and renews the HTTPS certificate by itself.
+# BEACON_DOMAIN is the public name, for example beacon.example.com. Its DNS must point at this host.
+{$BEACON_DOMAIN} {
+	encode zstd gzip
+
+	# The web container serves the dashboard and passes /api on to the API.
+	# flush_interval -1 sends each byte as it arrives, which the live progress stream needs.
+	reverse_proxy web:80 {
+		flush_interval -1
+	}
+
+	header {
+		Strict-Transport-Security "max-age=31536000"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "same-origin"
+		-Server
+	}
+}

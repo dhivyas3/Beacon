@@ -1,0 +1,101 @@
+{
+  "name": "Beacon: scheduled check",
+  "nodes": [
+    {
+      "parameters": {
+        "content": "## Beacon: n8n owns the schedule\n\nUse this when the schedule should live in n8n instead of in Beacon. Set the website's frequency to **Only when I start it** in Beacon so it is not checked twice.\n\n1. Create a **Header Auth** credential named `Beacon API key`: name `Authorization`, value `Bearer bcn_...` (an API key with `scans:write`).\n2. Set `beaconUrl`, `websiteId` and `callbackUrl` in **Config**.\n3. `callbackUrl` is the production URL of the **Beacon: callback** workflow. Leave it empty to skip the callback.\n4. Change the schedule to suit.",
+        "height": 300,
+        "width": 420
+      },
+      "id": "b1a1c1d1-0001-4000-8000-000000000001",
+      "name": "Read me",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [-160, -180]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "months",
+              "monthsInterval": 1,
+              "triggerAtDayOfMonth": 1,
+              "triggerAtHour": 6
+            }
+          ]
+        }
+      },
+      "id": "b1a1c1d1-0002-4000-8000-000000000002",
+      "name": "Monthly at 06:00",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [320, 80]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c1",
+              "name": "beaconUrl",
+              "value": "https://beacon.example.com",
+              "type": "string"
+            },
+            {
+              "id": "c2",
+              "name": "websiteId",
+              "value": "web_REPLACE_ME",
+              "type": "string"
+            },
+            {
+              "id": "c3",
+              "name": "callbackUrl",
+              "value": "https://n8n.example.com/webhook/beacon-callback",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b1a1c1d1-0003-4000-8000-000000000003",
+      "name": "Config",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [540, 80]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "={{ $json.beaconUrl }}/api/v1/websites/{{ $json.websiteId }}/check-now",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={{ JSON.stringify({ source: 'n8n', callbackUrl: $json.callbackUrl || undefined, metadata: { workflow: $workflow.name, executionId: $execution.id } }) }}",
+        "options": {}
+      },
+      "id": "b1a1c1d1-0004-4000-8000-000000000004",
+      "name": "Start check",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [760, 80],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "REPLACE_ME",
+          "name": "Beacon API key"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Monthly at 06:00": {
+      "main": [[{ "node": "Config", "type": "main", "index": 0 }]]
+    },
+    "Config": {
+      "main": [[{ "node": "Start check", "type": "main", "index": 0 }]]
+    }
+  },
+  "settings": { "executionOrder": "v1" },
+  "active": false
+}

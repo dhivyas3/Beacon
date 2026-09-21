@@ -11,3 +11,4 @@ test-results
 *.md
 docs/n8n
 fixtures/site/public
+e2e/.tmp

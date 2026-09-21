@@ -1,0 +1,31 @@
+# Adds HTTPS with Caddy to the base compose file:
+#
+#   docker compose -f docker-compose.yml -f deploy/docker-compose.caddy.yml up -d --build
+#
+# Needs Docker Compose 2.24 or newer (for `!reset`). Set BEACON_DOMAIN, PUBLIC_URL=https://...,
+# and COOKIE_SECURE=true in .env. See docs/DEPLOYMENT.md.
+
+services:
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - '80:80'
+      - '443:443'
+      - '443:443/udp'
+    environment:
+      BEACON_DOMAIN: ${BEACON_DOMAIN:?Set BEACON_DOMAIN in .env, for example beacon.example.com}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - web
+
+  # Only Caddy is reachable from outside. The web container is no longer published on a host port.
+  web:
+    ports: !reset []
+
+volumes:
+  caddy_data:
+  caddy_config:

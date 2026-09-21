@@ -1,14 +1,19 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { LogOut, Monitor, Moon, Sun } from 'lucide-react';
+import { LogOut, Monitor, Moon, Search, Sun } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router';
 import { toast } from 'sonner';
 import { api } from '@/api/client';
 import { useSession } from '@/api/hooks';
+import { CommandPalette } from '@/components/command-palette';
 import { Button } from '@/components/ui/button';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Tooltip } from '@/components/ui/tooltip';
 import { cn } from '@/lib/cn';
 import { useTheme } from '@/lib/theme';
+
+const SHORTCUT =
+  typeof navigator !== 'undefined' && navigator.platform.includes('Mac') ? '⌘K' : 'Ctrl K';
 
 export function Logo({ className }: { className?: string }) {
   return (
@@ -107,6 +112,19 @@ const navLink = ({ isActive }: { isActive: boolean }) =>
 /** Header, page container and the routes below it. */
 export function AppShell() {
   const client = useQueryClient();
+  const [paletteOpen, setPaletteOpen] = useState(false);
+
+  // Ctrl+K or Cmd+K opens the palette from anywhere, and closes it again.
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent): void => {
+      if ((event.metaKey || event.ctrlKey) && event.key.toLowerCase() === 'k') {
+        event.preventDefault();
+        setPaletteOpen((open) => !open);
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
   return (
     <div className="min-h-dvh">
       <a
@@ -140,11 +158,27 @@ export function AppShell() {
             </NavLink>
           </nav>
           <div className="ml-auto flex shrink-0 items-center gap-1.5">
+            <Button
+              size="sm"
+              className="text-muted sm:min-w-44 sm:justify-between"
+              onClick={() => setPaletteOpen(true)}
+              aria-label="Search and run commands"
+              aria-keyshortcuts="Control+K Meta+K"
+            >
+              <span className="flex items-center gap-2">
+                <Search className="size-3.5" aria-hidden />
+                <span className="hidden sm:inline">Search</span>
+              </span>
+              <kbd className="hidden rounded border border-border-strong px-1.5 font-sans text-[11px] text-subtle sm:inline">
+                {SHORTCUT}
+              </kbd>
+            </Button>
             <ThemeToggle />
             <UserMenu />
           </div>
         </div>
       </header>
+      <CommandPalette open={paletteOpen} onOpenChange={setPaletteOpen} />
       <main id="main" className="mx-auto max-w-[1240px] px-4 py-6 sm:px-6 sm:py-8">
         <Outlet />
       </main>

@@ -13,3 +13,5 @@ test-results
 .DS_Store
 jar.txt
 *.cookies
+
+e2e/.tmp

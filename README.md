@@ -2,7 +2,7 @@
 
 Beacon keeps watch on the health of websites. Register a site once and Beacon checks it on a schedule, usually on a handful of representative pages, then reports what it found. One-off full scans, started from the dashboard, the API, n8n or monday.com, still work and are one way of triggering a check among several. Every check discovers pages, runs the checks in the background, streams progress and produces a report.
 
-> **Status: Phase 8 of 9 (websites in the dashboard).** Add and manage websites, see every site at a glance, follow checks live and export a report as CSV or PDF, all from the dashboard. Registered websites are checked on a schedule and the report is emailed to their recipients. Scans can call a URL back, signed, when they finish. The n8n and monday.com guides and the end-to-end test arrive in Phase 9. See [docs/SPEC.md](docs/SPEC.md) for the product and [docs/PLAN.md](docs/PLAN.md) for the order of work. This README describes what exists today.
+> **Status: Phase 9 of 9 (complete).** Beacon monitors registered websites on a schedule and emails a designed report, checks any allowed site in a one-off full scan, and lets n8n and monday.com start checks and receive signed callbacks. The dashboard has an overview, websites, live reports, CSV and PDF export and a command palette (Ctrl+K). See [docs/SPEC.md](docs/SPEC.md) for the product, [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md) for n8n and monday.com, [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md) for running it in production, and [docs/PLAN.md](docs/PLAN.md) for how it was built. This README describes what exists today.
 
 ## Quick start
 
@@ -174,6 +174,8 @@ function verify(rawBody, header, secret) {
 }
 ```
 
+Ready-made n8n and monday.com workflows that start checks and verify this signature are in [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md).
+
 Any `2xx` counts as delivered. A `5xx`, `408`, `429` or a network error is retried up to six attempts, waiting 30 seconds, 2 minutes, 10 minutes, 1 hour and 6 hours. Any other status, including a `404` and a redirect (which is never followed), is final. The body has the scan's status, score, score change, counts, your `metadata` echoed back untouched, and links to the report and to the API. The schema is `CallbackPayload` in the OpenAPI document.
 
 ## Architecture
@@ -217,6 +219,7 @@ flowchart LR
 | `pnpm typecheck` | `tsc --noEmit` everywhere |
 | `pnpm lint` | ESLint and Prettier check |
 | `pnpm test` | Unit and integration tests (starts its own Postgres and Redis if none are configured) |
+| `pnpm e2e` | End-to-end suite: starts the whole system on its own ports and drives a browser through registering a website, a check, the report, exports, emails and callbacks, with axe in both themes (about 90 seconds; first run `pnpm --filter @beacon/e2e exec playwright install chromium`) |
 | `pnpm dev` | Watch mode for api, worker and web |
 | `pnpm --filter @beacon/web test` | Web component and page tests (Vitest, Testing Library, jsdom) |
 | `pnpm db:migrate` | Apply migrations |
@@ -300,3 +303,5 @@ A report can be downloaded: `GET /api/v1/scans/:id/export.csv` (every issue, one
 
 - [docs/PLAN.md](docs/PLAN.md): phases and design points
 - [docs/DECISIONS.md](docs/DECISIONS.md): choices made where the spec was open
+- [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md): n8n and monday.com workflows, callbacks, email
+- [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md): running it in production with HTTPS

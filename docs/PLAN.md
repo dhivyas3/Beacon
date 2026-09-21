@@ -75,7 +75,9 @@ across them, because the email report needs the comparison and the completion ho
    what was fixed since the last check.
 9. **Docs, n8n and polish** - `INTEGRATIONS.md` with n8n workflows (including the
    n8n-scheduled pattern), deployment guide with Caddy, command palette, end-to-end test,
-   accessibility and responsive pass.
+   accessibility and responsive pass. Delivered (see DECISIONS.md, entries dated 2026-09-24):
+   three importable n8n workflows that are tested, `docs/DEPLOYMENT.md` with a Caddy override,
+   the command palette, `pnpm e2e` (12 specs, axe in both themes), and the two bugs it found.
 
 ## Key design points
 

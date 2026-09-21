@@ -175,6 +175,8 @@ enabled. Never sent for a scan of no website.
   issues by check, by page or grouped by issue, evidence and screenshots, ignore and reopen. A
   report says which website it is a check of, or that it is a one-off scan.
 - **Settings:** API keys (shown once), allowed domains, webhook secret, scan defaults.
+- **Command palette:** Ctrl+K (Cmd+K) from anywhere: go to a page, open or check a website,
+  add a website, change theme, sign out.
 - **Quality bar:** calm, Linear-like design, light and dark themes, skeleton, empty and error
   states everywhere, keyboard reachable, WCAG AA contrast.
 

@@ -298,6 +298,31 @@ describe('following a running scan live', () => {
     expect(await screen.findByRole('link', { name: 'Export CSV' })).toBeInTheDocument();
   });
 
+  it('keeps the stream open when the last progress event says the scan finished, so done still arrives', async () => {
+    vi.stubGlobal('EventSource', FakeEventSource);
+    const api = fakeApi(routes({ 'GET /scans/:id': () => runningDetail() }));
+    renderApp(`/scans/${ID}`);
+    await screen.findByText('Scan in progress, results incomplete');
+    await waitFor(() => expect(FakeEventSource.instances).toHaveLength(1));
+    const source = FakeEventSource.instances[0] as FakeEventSource;
+    const finished = {
+      scanId: ID,
+      status: 'completed',
+      progress: progress({ phase: 'completed', percent: 100 }),
+      summary: { healthScore: 88, pages: 10, critical: 1, warnings: 0, passed: 9 },
+    };
+
+    // The server sends the final progress and then done, back to back.
+    api.on('GET /scans/:id', () => detail({ id: ID }));
+    const before = api.callsTo('GET', `/scans/${ID}`).length;
+    act(() => source.emit('progress', finished));
+    // The full scan is loaded, with its per-check results, not patched into the cache.
+    await waitFor(() => expect(api.callsTo('GET', `/scans/${ID}`).length).toBeGreaterThan(before));
+    expect(await screen.findByText('Issues by check')).toBeInTheDocument();
+    act(() => source.emit('done', finished));
+    expect(source.closed).toBe(true);
+  });
+
   it('goes back to polling when the stream drops', async () => {
     vi.stubGlobal('EventSource', FakeEventSource);
     fakeApi(routes({ 'GET /scans/:id': () => runningDetail() }));

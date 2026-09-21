@@ -49,8 +49,9 @@
   --text: #f4f4f5;
   --text-muted: #a1a1aa;
   --text-subtle: #8b8b94;
-  --accent: #6366f1;
-  --accent-hover: #7c7ff5;
+  /* White text on the accent needs 4.5:1. #6366f1 is 4.47, so this is a shade deeper. */
+  --accent: #5c5fee;
+  --accent-hover: #5254e6;
   --accent-fg: #ffffff;
   --accent-soft: #1e1f3d;
   --accent-text: #a5a8ff;
@@ -187,6 +188,9 @@
     font-variant-numeric: tabular-nums;
   }
   .scroll-x {
+    /* Positioned, so the visually hidden text inside a table (`sr-only` is absolute) is clipped
+       with the rest of the scroller instead of stretching the page. */
+    position: relative;
     overflow-x: auto;
     scrollbar-width: thin;
   }

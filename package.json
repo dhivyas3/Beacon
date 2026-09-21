@@ -19,7 +19,8 @@
     "db:generate": "pnpm --filter @beacon/db generate",
     "db:migrate": "pnpm --filter @beacon/db migrate",
     "db:migrate:dev": "pnpm --filter @beacon/db migrate:dev",
-    "db:seed": "pnpm --filter @beacon/db seed"
+    "db:seed": "pnpm --filter @beacon/db seed",
+    "e2e": "pnpm --filter @beacon/e2e e2e"
   },
   "devDependencies": {
     "@eslint/js": "^9.39.5",
