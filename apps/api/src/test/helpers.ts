@@ -168,22 +168,37 @@ export async function insertScan(
     createdAt?: Date;
     healthScore?: number | null;
     pagesTotal?: number;
+    websiteId?: string | null;
+    previousScanId?: string | null;
+    finishedAt?: Date;
+    triggeredByType?: 'manual_ui' | 'manual_api' | 'scheduled' | 'n8n' | 'monday';
+    pageSelectionMode?: 'full' | 'static_list' | 'random_sample';
+    criticalCount?: number;
+    warningCount?: number;
   },
 ): Promise<string> {
   const id = newId('scn');
+  const status = input.status ?? 'completed';
   await db.scan.create({
     data: {
       id,
       url: `https://${input.hostname}/`,
       hostname: input.hostname,
       runNumber: input.runNumber ?? 1,
-      status: input.status ?? 'completed',
+      status,
       checks: ['images', 'links'],
       pagesTotal: input.pagesTotal ?? 0,
       healthScore: input.healthScore ?? null,
+      criticalCount: input.criticalCount ?? 0,
+      warningCount: input.warningCount ?? 0,
+      websiteId: input.websiteId ?? null,
+      previousScanId: input.previousScanId ?? null,
+      triggeredByType: input.triggeredByType ?? 'manual_api',
+      pageSelectionMode: input.pageSelectionMode ?? 'full',
       ...(input.createdAt ? { createdAt: input.createdAt } : {}),
-      startedAt: input.status === 'queued' ? null : new Date(),
-      finishedAt: input.status === 'completed' ? new Date() : null,
+      startedAt: status === 'queued' ? null : new Date(),
+      finishedAt:
+        status === 'completed' || status === 'failed' ? (input.finishedAt ?? new Date()) : null,
     },
   });
   return id;

@@ -1,8 +1,8 @@
 # Beacon
 
-Beacon validates live websites after launch. Submit a URL (from the dashboard, n8n, monday.com via n8n, or CI) and it assigns a scan ID, discovers every page, runs checks in the background, streams progress, and produces a report.
+Beacon keeps watch on the health of websites. Register a site once and Beacon checks it on a schedule, usually on a handful of representative pages, then reports what it found. One-off full scans, started from the dashboard, the API, n8n or monday.com, still work and are one way of triggering a check among several. Every check discovers pages, runs the checks in the background, streams progress and produces a report.
 
-> **Status: Phase 5 of 6 (forms and SEO).** All six checks are live: images, links, staging URLs, page health, forms and SEO. Forms can be detected, validated without sending anything, or submitted with test data. Callbacks, live SSE updates, CSV/PDF export and the command palette arrive in Phase 6. See [docs/PLAN.md](docs/PLAN.md). This README describes what exists today.
+> **Status: Phase 6 of 9 (websites, scheduling and page selection).** The product is now called Beacon. You can register a website through the API, give it a schedule and a page selection, and Beacon checks it on time. Emailed reports and signed callbacks arrive in Phase 7, the dashboard screens for websites in Phase 8, and the n8n guides and end-to-end test in Phase 9. See [docs/SPEC.md](docs/SPEC.md) for the product and [docs/PLAN.md](docs/PLAN.md) for the order of work. This README describes what exists today.
 
 ## Quick start
 
@@ -81,6 +81,47 @@ See [fixtures/site/README.md](fixtures/site/README.md) for what is wrong with ea
 
 Login, payment, file upload, CAPTCHA, search and third-party forms are never touched, and neither are forms with a destructive or financial button such as "Delete" or "Buy now". Each is reported as skipped with the reason. Requests Beacon sends when submitting carry an `X-Beacon-Test: form-submission` header so site owners can filter them.
 
+## Websites and scheduled checks
+
+A **website** is a site you monitor. It has a schedule, a page selection, a list of enabled checks, a form mode and, from Phase 7, recipients who get the report. Each execution is a **check** (stored as a scan). A scan of no website is a one-off scan and behaves exactly as before.
+
+| Page selection | What is checked |
+| --- | --- |
+| `full` | Every page found by the sitemap and a crawl. The default for a one-off scan |
+| `static_list` | Exactly the pages you list. No discovery |
+| `random_sample` | A sample of `sampleSize` pages, always including the homepage and any pinned pages. Pages not checked before are preferred, so coverage grows check by check |
+
+| Schedule | Meaning |
+| --- | --- |
+| `manual` | Only when someone asks |
+| `daily` | Every day at `scheduleHourUtc` |
+| `weekly` | On `scheduleDayOfWeek` (0 is Sunday) |
+| `monthly` | On `scheduleDayOfMonth`, clamped to the last day of shorter months |
+
+The worker looks for due websites every two minutes. After downtime a website is checked once, then follows its normal schedule, with no backlog.
+
+Register one from the API (the dashboard screens arrive in Phase 8). This is "monthly, 8 random pages, homepage always included":
+
+```bash
+curl -s -H "Authorization: Bearer $KEY" -H 'content-type: application/json' \
+  -d '{
+    "name": "Example Estates",
+    "url": "https://www.example-estates.co.uk",
+    "checkFrequency": "monthly", "scheduleDayOfMonth": 1, "scheduleHourUtc": 6,
+    "pageSelectionMode": "random_sample", "sampleSize": 8,
+    "pinnedPageUrls": ["https://www.example-estates.co.uk/contact/"],
+    "recipients": [{"email": "owner@example-estates.co.uk"}]
+  }' http://localhost:3000/api/v1/websites
+
+# Check it now, outside the schedule
+curl -s -X POST -H "Authorization: Bearer $KEY" http://localhost:3000/api/v1/websites/web_.../check-now
+
+# Scores over time, newest first
+curl -s -H "Authorization: Bearer $KEY" http://localhost:3000/api/v1/websites/web_.../history
+```
+
+`POST /scans` also accepts a `websiteId`, which inherits the website's checks, form mode and page selection unless the request overrides them. Send `"source": "n8n"` or `"monday"` so the dashboard shows where a check came from.
+
 ## Architecture
 
 ```mermaid
@@ -104,7 +145,7 @@ flowchart LR
 | Package | Purpose |
 | --- | --- |
 | `apps/api` | Public `/api/v1` API, sessions and API keys, OpenAPI at `/api/docs` |
-| `apps/worker` | Scan engine: discovery, browser pool, checks, link verification, progress, stale-scan reaper |
+| `apps/worker` | Scan engine: discovery and page selection, browser pool, checks, link verification, progress, stale-scan reaper, and the scheduler that starts due websites |
 | `apps/web` | React 19 dashboard: Vite, React Router, TanStack Query, Tailwind, Radix, Recharts |
 | `packages/shared` | Zod schemas (the API contract), progress and ETA maths, health score, URL utilities, env parsing |
 | `packages/net` | SSRF guard and the HTTP client for every user-supplied URL: DNS pinning, redirect re-checks, size and time limits |

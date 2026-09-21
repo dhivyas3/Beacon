@@ -1,8 +1,11 @@
 # Beacon implementation plan
 
-Beacon validates live websites after launch. A scan is submitted through a versioned,
-key-authenticated API, a worker discovers every page and runs checks in the background,
-and a React dashboard shows live progress and the final report.
+Beacon keeps watch on the health of websites. A registered **Website** is checked on a
+schedule (daily, weekly, monthly), usually on a handful of representative pages, and the
+report is emailed to whoever owns the site. One-off full scans, started from the dashboard, the
+API, n8n or monday.com, remain and are one trigger type among several. A key-authenticated
+API, a worker that runs the checks in the background and a React dashboard sit underneath.
+See [SPEC.md](SPEC.md) for the product.
 
 ## Repository layout
 
@@ -46,10 +49,30 @@ Each phase ends with `pnpm typecheck && pnpm lint && pnpm test` green and a conv
    `forms:submit` scope enforcement, `seo` check, screenshots with element highlighting.
    Delivered: forms are tested in a scratch page; the browser session and screenshots are as in
    phase 3, plus check-supplied screenshots (see DECISIONS.md, "Forms").
-6. **Integrations and polish** - signed callbacks with retries + `WebhookDelivery`, SSE
-   throttling, CSV + PDF export, previous-scan comparison (new / still open / fixed), ignore
-   states, command palette, n8n workflows, docs, end-to-end test, accessibility and
-   responsive pass.
+Phases 6 to 9 follow the pivot from a one-off launch scanner to scheduled monitoring
+(the brief is in [SPEC.md](SPEC.md), section "Beacon"). The original phase 6 (callbacks,
+SSE, exports, comparison, command palette, n8n docs, end-to-end test, accessibility) is split
+across them, because the email report needs the comparison and the completion hook.
+
+6. **Websites, scheduling and page selection** - rename to Beacon; `Website`,
+   `WebsiteRecipient` and the scan extensions (`websiteId`, `triggeredByType`,
+   `previousScanId`, page-selection columns) in one additive migration; `full`,
+   `static_list` and `random_sample` selection in the runner; pure schedule maths; a
+   scheduler tick (BullMQ repeatable job) with catch-up on start; `/websites` API including
+   `check-now`, `history` and recipients; `websiteId` on `POST /scans`.
+7. **Email reports and notifications** - `EmailSender` interface with Resend by default,
+   `EmailDelivery` log with retries, the `packages/email-templates` package (MJML) with
+   `pnpm email:preview`, subject and "all clear" variants, sparkline, "new since last
+   check"; signed callbacks with retries + `WebhookDelivery` (n8n and monday.com), sent from
+   the same completion hook; previous-scan comparison made website aware (new / still open /
+   fixed).
+8. **Websites UI and dashboard overview** - Websites nav, list, add/edit form (schedule, page
+   selection, checks, recipients, email toggle), detail page with score chart and history,
+   check-now, report breadcrumb and trend badge, overview dashboard of website cards, SSE
+   progress, CSV + PDF export, ignore states.
+9. **Docs, n8n and polish** - `INTEGRATIONS.md` with n8n workflows (including the
+   n8n-scheduled pattern), deployment guide with Caddy, command palette, end-to-end test,
+   accessibility and responsive pass.
 
 ## Key design points
 

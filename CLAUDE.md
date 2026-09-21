@@ -1,6 +1,6 @@
 # Beacon - working notes for Claude Code
 
-Read `docs/PLAN.md` for the phase plan and `docs/DECISIONS.md` for decisions already made.
+Beacon monitors websites on a schedule and emails a report; one-off full scans are one trigger among several. Read `docs/SPEC.md` for the product, `docs/PLAN.md` for the phase plan and `docs/DECISIONS.md` for decisions already made.
 Do not re-litigate decisions; append a new entry if you must change one.
 
 ## Stack (pinned on purpose)
@@ -25,7 +25,8 @@ pnpm typecheck               # tsc --noEmit in every package
 pnpm lint                    # eslint + prettier --check
 pnpm format                  # prettier --write
 pnpm test                    # vitest in every package (needs Postgres + Redis, see below)
-pnpm e2e                     # (Phase 6) Playwright end-to-end suite
+pnpm e2e                     # (Phase 9) Playwright end-to-end suite
+pnpm email:preview           # (Phase 7) render the email template against fixture data
 pnpm dev                     # api + worker + web in watch mode
 pnpm dev:services            # embedded Postgres (5432) + Redis (6379) without Docker
 pnpm db:migrate              # prisma migrate deploy
@@ -61,6 +62,11 @@ local `redis-server` (from `PATH` or `REDIS_SERVER_BIN`) are started on random p
 - Web colours are CSS variables in `src/index.css` (light and dark). Use the semantic Tailwind tokens (`text-fg`, `bg-surface`, `text-critical-text`), never raw hex values, so both themes and contrast stay correct.
 - Web tests use `fakeApi` from `src/test/fake-api.ts` (an in-memory `fetch`, keyed `'GET /scans/:id'`, records calls) and `renderApp(route)` from `src/test/render.tsx`. Find things by role and accessible name, as a person would. A fake route nobody registered answers 404, so a forgotten route fails loudly.
 - Every `CheckType` has a check in the worker, so the UI offers all of them. If you add a new check type, add it to `CHECK_TYPES` in shared, register the check, and add fixture pages for it.
+- A `Scan` is a "check" in the dashboard and in email. `Website` is the thing that is monitored (one per hostname); a scan belongs to a website or to none. Never write a request or response shape outside `packages/shared/src/schemas`, and keep website rules that span fields in `websiteConfigProblems`, which create, update and the scheduler share.
+- Scans are created in one place, `createQueuedScan` in `@beacon/db`, for both the API and the scheduler. It numbers runs per hostname and refuses a second active scan. Do not create `Scan` rows any other way outside tests.
+- Schedule maths is pure and lives in `packages/shared/src/schedule.ts`. Times are UTC. `nextCheckAt` is planned from now, never from a missed time, so downtime never causes a backlog.
+- Page selection is decided by the scan (`pageSelectionMode`, `staticPageUrls`, `pinnedPageUrls`, `sampleSize`), copied from the website when it is created. The runner reads the scan, not the website. Sampling is pure (`scan/page-selection.ts`) and takes an injected random function, so tests are deterministic.
+- The scheduler (`apps/worker/src/scheduler.ts`) claims a due website with a compare-and-set on `nextCheckAt`, so any number of workers can tick. Test it with an injected `now`.
 - Commit messages follow Conventional Commits (`feat(api): ...`, `fix(worker): ...`).
 - Never scan a real third-party site in development or tests; use `fixtures/site`. Worker tests keep DNS and Chromium offline with `offlineResolver` and `OFFLINE_BROWSER_ARGS` from `apps/worker/src/test/harness.ts`.
 - A check is one file in `apps/worker/src/checks/` exporting a `Check` (`run` per page, optional `finalize` once per scan), registered in `checks/index.ts`. Keep the analysis in pure functions so it can be unit tested without a browser.

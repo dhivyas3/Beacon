@@ -269,3 +269,59 @@ Critical: no title, and `noindex` (an accidental noindex after launch is the cla
 ## 2026-09-21 The browser session settles when a scan is stopped
 
 A cancelled or shut-down scan could wait forever for a Playwright call that was in flight when its context was closed (seen as a hung test on the second page). Every call in `BrowserSession.load` now races the abort signal through `abortable`, and a navigation that fails because the scan is stopping is rethrown instead of being recorded as a page that failed to load.
+
+## 2026-09-21 Rename: QA Hub becomes Beacon
+
+Packages are `@beacon/*`, the bot is `BeaconBot/1.0`, callbacks will be signed with `X-Beacon-Signature`, form submissions carry `X-Beacon-Test`, the session cookie is `beacon_session` (so everyone is signed out once), and new API keys start with `bcn_`. Keys created before the rename start with `qah_` and are still accepted, because keys are looked up by hash and there is no reason to break a working integration. Callbacks were not delivered yet, so renaming their signature header breaks nobody. The working folder is still called "QA Hub" on this machine, because renaming the directory the tooling is running in gains nothing. Fixture data, test hostnames and the `qa.test` public URL used in tests are left alone.
+
+## 2026-09-21 A check is a scan
+
+The brief allows keeping `Scan` as the internal name to avoid a destructive migration. It is kept. "Check" is the word in the dashboard and in email. The API, the database and the code say scan, and `Website` is the new first-class concept a scan can belong to.
+
+## 2026-09-21 One website per hostname
+
+`Website.hostname` is unique. A hostname's history, its run numbers, the one-active-scan rule and the "previous check" all key on the hostname, so two websites on one hostname would share all of them and confuse each other. Registering a second returns `409` naming the existing one. A website's URL can be edited but must stay on its hostname; monitoring another hostname means adding another website.
+
+## 2026-09-21 Pinned pages: a column on the website, merged into the sample
+
+Of the two options in the brief, pinned pages are a `pinnedPageUrls` list on `Website` rather than a table. They are always included in a `random_sample` check, on top of the homepage, and they count towards the sample size. They do not replace `staticPageUrls`, which is a different mode where exactly the listed pages are checked. Pinned pages that discovery did not find are still checked, since the owner asked for them. If the homepage and pinned pages are more than the sample size, all of them are checked: the size is a target for the random part, not a cap on what the owner insisted on. "Eight random pages, homepage always included" therefore means eight pages in total, one of which is the homepage.
+
+## 2026-09-21 A sample prefers pages not checked yet
+
+A purely random sample can repeat the same pages for months. Instead the random part fills first with pages this website has never been checked on, chosen at random, and only when those run out does it repeat pages, oldest check first. Every run is still a fresh sample, and the count of distinct pages ever checked (shown on the website) grows until the whole site has been seen. A test proves a 31-page site is fully covered in eight runs of five.
+
+## 2026-09-21 Page selection is stored on the scan
+
+The website's selection (mode, list, pinned pages, sample size) is copied onto the scan when it is created, alongside the checks and form mode that were already copied. A run is then reproducible and independent of later edits to the website, and a request can override any of it ("check this website, but with 3 pages"). A scan of no website defaults to `full`, so nothing that worked before changes.
+
+## 2026-09-21 The scheduler runs in the worker and plans from now
+
+A repeating BullMQ job on the maintenance queue, shared by every worker, ticks every two minutes. Each due website is claimed with a compare-and-set on `nextCheckAt`, so simultaneous workers start it once, which a test proves with three concurrent ticks. `nextCheckAt` moves to the next scheduled time when the check is started, not when it completes as the brief suggests, because a claim that only moves on completion would let a second tick start the same check while the first runs. The next time is computed from now rather than from the missed time, so downtime produces one check and then the normal cadence, never a backlog. The catch-up on start is the same tick, run once at startup. If the previous check is still running, the website is retried half an hour later and the reason is shown.
+
+## 2026-09-21 Scan creation lives in the db package
+
+The API and the scheduler both create scans, and both must number runs per hostname and refuse a second active scan. That transaction is now `createQueuedScan` in `@beacon/db`, and the API calls it too. The scheduler skips the DNS check the API does on request, because the runner applies the same SSRF guard when it fetches the site and reports a clear failure.
+
+## 2026-09-21 What "previous check" means
+
+A completed scan records `previousScanId` when it finishes. It is the latest earlier completed scan of the same website, or of no website for a one-off scan, so a full audit is never compared with a sample of a few pages. Before completion, and for older rows, the same rule is computed on the fly. Migrated scans were backfilled per hostname. For a sampled check, "fixed since last check" only counts issues on pages that were checked both times, because an issue on a page that was not looked at again is unseen, not fixed. The same caveat applies in reverse: an issue on a page checked for the first time is labelled new even if it is old.
+
+## 2026-09-21 Who owns a website, and who may change one
+
+The owner is the signed-in user who created it, or, for an API key, the user who created the key. Ownership is informational for now: anyone with `scans:read` sees every website and `scans:write` changes them, as with scans. Saving a website with `formMode: "submit"` needs `forms:submit`, and that authorises its scheduled runs, which have no caller of their own. A manual check runs the website's own form mode without asking the caller again, since the configuration was already authorised.
+
+## 2026-09-21 Website defaults
+
+Weekly on Monday at 06:00 UTC, a random sample of ten pages, every check, forms in `validate_only` (safer than the `detect` default of a one-off scan, and it needs no scope), active. Times are stored and scheduled in UTC and are shown in the viewer's local time in the dashboard.
+
+## 2026-09-21 Deleting and pausing
+
+Deleting a website removes it and its recipients. Its past checks are kept as scans that belong to no website, so history and links keep working. A paused website is not scheduled but can still be checked manually.
+
+## 2026-09-21 Failed checks show on the website
+
+A check that finishes updates the website's `lastCheckAt`. A check that fails also leaves its message in `lastRunError` ("Could not reach ..."), which the next completed check clears, so an unreachable site is visible without opening the scan.
+
+## 2026-09-21 Gap: callbacks are still to be built
+
+The brief says n8n and monday.com "receive the completed callback exactly as before". Scans accept a `callbackUrl` and store it, but nothing sends the callback yet, because that was part of the original phase 6. It moves to phase 7, next to the email report, since both are sent from the same "scan finished" hook.

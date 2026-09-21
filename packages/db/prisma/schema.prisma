@@ -36,6 +36,27 @@ enum FormMode {
   submit
 }
 
+enum CheckFrequency {
+  manual
+  daily
+  weekly
+  monthly
+}
+
+enum PageSelectionMode {
+  full
+  static_list
+  random_sample
+}
+
+enum TriggerType {
+  manual_ui
+  manual_api
+  scheduled
+  n8n
+  monday
+}
+
 enum PageStatus {
   pending
   done
@@ -75,6 +96,7 @@ model User {
   apiKeys        ApiKey[]
   allowedDomains AllowedDomain[]
   scans          Scan[]
+  websites       Website[]
 }
 
 model Session {
@@ -131,6 +153,60 @@ model Setting {
   updatedAt DateTime @updatedAt
 }
 
+/// A site that is monitored: checked on a schedule, with the report emailed to its recipients.
+model Website {
+  id       String @id
+  name     String
+  url      String
+  /// One website per hostname, so a hostname's history is unambiguous.
+  hostname String @unique
+  ownerId  String
+
+  checkFrequency     CheckFrequency @default(weekly)
+  /// 0 is Sunday. Used by weekly.
+  scheduleDayOfWeek  Int?
+  /// 1 to 31, clamped to the last day of shorter months. Used by monthly.
+  scheduleDayOfMonth Int?
+  scheduleHourUtc    Int            @default(6)
+
+  pageSelectionMode PageSelectionMode @default(random_sample)
+  /// Exactly these pages are checked by static_list.
+  staticPageUrls    String[]
+  /// Always included, on top of the homepage, by random_sample.
+  pinnedPageUrls    String[]
+  /// Pages checked by random_sample, homepage and pinned pages included.
+  sampleSize        Int               @default(10)
+  enabledChecks     String[]
+  formMode          FormMode          @default(validate_only)
+
+  isActive     Boolean   @default(true)
+  lastCheckAt  DateTime?
+  nextCheckAt  DateTime?
+  /// Why the last scheduled run could not start. Cleared by the next run that does.
+  lastRunError String?
+  createdAt    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+
+  owner      User               @relation(fields: [ownerId], references: [id])
+  recipients WebsiteRecipient[]
+  scans      Scan[]
+
+  @@index([isActive, nextCheckAt])
+}
+
+model WebsiteRecipient {
+  id        String   @id
+  websiteId String
+  email     String
+  name      String?
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+
+  website Website @relation(fields: [websiteId], references: [id], onDelete: Cascade)
+
+  @@unique([websiteId, email])
+}
+
 model Scan {
   id        String     @id
   url       String
@@ -149,6 +225,17 @@ model Scan {
 
   triggeredByUserId   String?
   triggeredByApiKeyId String?
+  triggeredByType     TriggerType @default(manual_api)
+
+  /// Set when this scan is a check of a registered website. Null for a one-off scan.
+  websiteId         String?
+  /// The completed scan this one is compared with, set when it completes.
+  previousScanId    String?
+  /// Page selection for this run, copied from the website (or the request) when it is created.
+  pageSelectionMode PageSelectionMode @default(full)
+  staticPageUrls    String[]
+  pinnedPageUrls    String[]
+  sampleSize        Int               @default(10)
 
   // Aggregate counters, so the dashboard list is a single cheap query.
   pagesFound    Int  @default(0)
@@ -175,8 +262,11 @@ model Scan {
   startedAt    DateTime?
   finishedAt   DateTime?
 
-  triggeredByUser   User?   @relation(fields: [triggeredByUserId], references: [id], onDelete: SetNull)
-  triggeredByApiKey ApiKey? @relation(fields: [triggeredByApiKeyId], references: [id], onDelete: SetNull)
+  triggeredByUser   User?    @relation(fields: [triggeredByUserId], references: [id], onDelete: SetNull)
+  triggeredByApiKey ApiKey?  @relation(fields: [triggeredByApiKeyId], references: [id], onDelete: SetNull)
+  website           Website? @relation(fields: [websiteId], references: [id], onDelete: SetNull)
+  previousScan      Scan?    @relation("ScanHistory", fields: [previousScanId], references: [id], onDelete: SetNull)
+  followingScans    Scan[]   @relation("ScanHistory")
 
   pages      ScanPage[]
   issues     ScanIssue[]
@@ -189,6 +279,7 @@ model Scan {
   @@index([status, createdAt])
   @@index([createdAt])
   @@index([status, heartbeatAt])
+  @@index([websiteId, status, finishedAt])
 }
 
 model ScanPage {

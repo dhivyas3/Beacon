@@ -4,11 +4,13 @@ export { Prisma, PrismaClient } from '@prisma/client';
 export type {
   ApiKey,
   AllowedDomain,
+  CheckFrequency,
   CheckResult,
   FormMode,
   IssueState,
   LinkKind,
   LinkState,
+  PageSelectionMode,
   PageStatus,
   Role,
   Scan,
@@ -20,8 +22,11 @@ export type {
   ScanStatus,
   Session,
   Severity,
+  TriggerType,
   User,
   WebhookDelivery,
+  Website,
+  WebsiteRecipient,
 } from '@prisma/client';
 
 export type Db = PrismaClient;
@@ -49,4 +54,5 @@ export function isUniqueViolation(error: unknown): boolean {
     error.code === UNIQUE_VIOLATION
   );
 }
+export * from './scans.js';
 export * from './settings.js';

@@ -1,4 +1,5 @@
-import { computeHealthScore } from '@beacon/shared';
+import { computeHealthScore, newId } from '@beacon/shared';
+import { freePort } from '@beacon/testkit';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import {
   createWorld,
@@ -466,6 +467,194 @@ describe('scans that check forms', () => {
     });
     expect(result.issuesFound).toBe(scan.criticalCount + scan.warningCount);
   }, 180_000);
+});
+
+/** A small deterministic generator, so a "random" sample is the same on every run. */
+function seeded(seed: number): () => number {
+  let state = seed;
+  return () => {
+    state = (state * 1664525 + 1013904223) % 4294967296;
+    return state / 4294967296;
+  };
+}
+
+describe('scans of a website: page selection', () => {
+  let websiteId: string;
+  const pathOf = (url: string) => url.replace(world.sites.site.url, '') || '/';
+
+  beforeAll(async () => {
+    const owner = await world.db.user.create({
+      data: { id: newId('usr'), email: 'owner@example.com', passwordHash: 'x', name: 'Owner' },
+    });
+    const site = world.sites.site.url;
+    const website = await world.db.website.create({
+      data: {
+        id: newId('web'),
+        name: 'Fixture',
+        url: `${site}/`,
+        hostname: new URL(site).hostname,
+        ownerId: owner.id,
+        checkFrequency: 'monthly',
+        scheduleDayOfMonth: 1,
+        enabledChecks: ['page-health', 'seo'],
+      },
+    });
+    websiteId = website.id;
+  });
+
+  async function pagesOf(scanId: string): Promise<string[]> {
+    const rows = await world.db.scanPage.findMany({ where: { scanId }, orderBy: { url: 'asc' } });
+    return rows.map((row) => pathOf(row.url));
+  }
+
+  it('checks exactly the listed pages and never runs discovery', async () => {
+    const site = world.sites.site.url;
+    const id = await insertQueuedScan(world.db, `${site}/`, {
+      checks: ['page-health', 'seo'],
+      pageSelectionMode: 'static_list',
+      staticPageUrls: [`${site}/about`, `${site}/contact`, `${site}/about?utm_source=x`],
+    });
+    world.sites.site.reset();
+    await runScan(deps(), id);
+
+    const scan = await world.db.scan.findUniqueOrThrow({ where: { id } });
+    expect(scan.status).toBe('completed');
+    expect(scan.pagesTotal).toBe(2);
+    expect(scan.pagesDone).toBe(2);
+    expect(await pagesOf(id)).toEqual(['/about', '/contact']);
+
+    // No sitemap or robots.txt was fetched, and nothing was crawled.
+    const paths = world.sites.site.requests.map((request) => request.path);
+    expect(paths).not.toContain('/sitemap.xml');
+    expect(paths).not.toContain('/robots.txt');
+    expect(paths).not.toContain('/');
+    // Without discovery there are no findings about the sitemap.
+    const issues = await world.db.scanIssue.findMany({ where: { scanId: id } });
+    expect(issues.map(ruleOf).filter((rule) => rule.includes('sitemap'))).toEqual([]);
+  }, 120_000);
+
+  it('fails clearly when a listed page is not on the site', async () => {
+    const site = world.sites.site.url;
+    const id = await insertQueuedScan(world.db, `${site}/`, {
+      checks: ['page-health'],
+      pageSelectionMode: 'static_list',
+      staticPageUrls: ['https://elsewhere.example.org/x'],
+    });
+    await runScan(deps(), id);
+    const scan = await world.db.scan.findUniqueOrThrow({ where: { id } });
+    expect(scan.status).toBe('failed');
+    expect(scan.errorMessage).toContain('not on http://127.0.0.1');
+  }, 60_000);
+
+  it('checks a sample that always has the homepage and pinned pages, then a fresh, wider one next time', async () => {
+    const site = world.sites.site.url;
+    const options = {
+      checks: ['page-health' as const, 'seo' as const],
+      websiteId,
+      pageSelectionMode: 'random_sample' as const,
+      sampleSize: 5,
+      pinnedPageUrls: [`${site}/contact`],
+    };
+
+    const firstId = await insertQueuedScan(world.db, `${site}/`, options);
+    await runScan(deps({ random: seeded(1) }), firstId);
+    const first = await pagesOf(firstId);
+    expect(first).toHaveLength(5);
+    expect(first).toContain('/');
+    expect(first).toContain('/contact');
+
+    const secondId = await insertQueuedScan(world.db, `${site}/`, options);
+    await runScan(deps({ random: seeded(2) }), secondId);
+    const second = await pagesOf(secondId);
+    expect(second).toHaveLength(5);
+    expect(second).toContain('/');
+    expect(second).toContain('/contact');
+
+    // Everything not required is new the second time, because the site has more than enough pages.
+    const optional = (pages: string[]) => pages.filter((p) => p !== '/' && p !== '/contact');
+    expect(optional(second).filter((page) => optional(first).includes(page))).toEqual([]);
+
+    // Pages checked so far grow from one check to the next.
+    const distinct = await world.db.scanPage.findMany({
+      where: { scan: { websiteId } },
+      distinct: ['url'],
+      select: { url: true },
+    });
+    expect(distinct.length).toBe(new Set([...first, ...second]).size);
+    expect(distinct.length).toBeGreaterThan(5);
+
+    // The second check is compared with the first, and the website's last check is updated.
+    const scans = await world.db.scan.findMany({ where: { id: { in: [firstId, secondId] } } });
+    expect(scans.find((s) => s.id === secondId)?.previousScanId).toBe(firstId);
+    expect(scans.find((s) => s.id === firstId)?.previousScanId).toBeNull();
+    const website = await world.db.website.findUniqueOrThrow({ where: { id: websiteId } });
+    expect(website.lastCheckAt).not.toBeNull();
+    expect(website.lastRunError).toBeNull();
+  }, 240_000);
+
+  it('a scan of a sample still reports what discovery learned about the whole site', async () => {
+    const latest = await world.db.scan.findMany({
+      where: { websiteId },
+      orderBy: { runNumber: 'desc' },
+      take: 1,
+    });
+    const issues = await world.db.scanIssue.findMany({
+      where: { scanId: latest[0]?.id as string, checkType: 'seo' },
+    });
+    // The fixture has a sitemap, so there is nothing to say about a missing one.
+    expect(issues.map(ruleOf)).not.toContain('seo.no-sitemap');
+  });
+
+  it('never compares a check of the website with a one-off scan of the same host', async () => {
+    const latest = await world.db.scan.findMany({
+      where: { websiteId },
+      orderBy: { runNumber: 'desc' },
+      take: 1,
+    });
+    const previous = await world.db.scan.findUniqueOrThrow({
+      where: { id: latest[0]?.previousScanId as string },
+    });
+    expect(previous.websiteId).toBe(websiteId);
+  });
+
+  it('leaves the reason on the website when a check fails, and clears it when one completes', async () => {
+    const dead = `http://127.0.0.1:${await freePort()}`;
+    const id = await insertQueuedScan(world.db, `${dead}/`, {
+      checks: ['page-health'],
+      websiteId,
+      pageSelectionMode: 'random_sample',
+      sampleSize: 3,
+    });
+    await runScan(deps(), id);
+    expect((await world.db.scan.findUniqueOrThrow({ where: { id } })).status).toBe('failed');
+    let website = await world.db.website.findUniqueOrThrow({ where: { id: websiteId } });
+    expect(website.lastRunError).toMatch(/^Could not reach/);
+    expect(website.lastCheckAt).not.toBeNull();
+
+    const site = world.sites.site.url;
+    const ok = await insertQueuedScan(world.db, `${site}/`, {
+      checks: ['page-health'],
+      websiteId,
+      pageSelectionMode: 'static_list',
+      staticPageUrls: [`${site}/about`],
+    });
+    await runScan(deps(), ok);
+    website = await world.db.website.findUniqueOrThrow({ where: { id: websiteId } });
+    expect(website.lastRunError).toBeNull();
+  }, 120_000);
+
+  it('a scan of no website updates no website', async () => {
+    const before = await world.db.website.findUniqueOrThrow({ where: { id: websiteId } });
+    const site = world.sites.site.url;
+    const id = await insertQueuedScan(world.db, `${site}/`, {
+      checks: ['page-health'],
+      pageSelectionMode: 'static_list',
+      staticPageUrls: [`${site}/about`],
+    });
+    await runScan(deps(), id);
+    const after = await world.db.website.findUniqueOrThrow({ where: { id: websiteId } });
+    expect(after.lastCheckAt).toEqual(before.lastCheckAt);
+  }, 60_000);
 });
 
 describe('scan lifecycle', () => {

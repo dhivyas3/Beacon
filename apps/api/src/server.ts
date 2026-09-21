@@ -25,6 +25,7 @@ import { apiKeyRoutes } from './routes/api-keys.js';
 import { authRoutes } from './routes/auth.js';
 import { healthRoutes } from './routes/health.js';
 import { scanRoutes } from './routes/scans.js';
+import { websiteRoutes } from './routes/websites.js';
 import { settingsRoutes } from './routes/settings.js';
 
 export interface ServerDeps {
@@ -122,6 +123,11 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
       },
       servers: [{ url: config.PUBLIC_URL }],
       tags: [
+        {
+          name: 'Websites',
+          description:
+            'Register sites to be checked on a schedule, choose which pages are checked, and manage who receives the report.',
+        },
         { name: 'Scans', description: 'Start, inspect and cancel scans.' },
         { name: 'Issues', description: 'Findings of a scan.' },
         { name: 'Allowed domains', description: 'Hostnames that may be scanned. Admin only.' },
@@ -156,6 +162,7 @@ export async function buildServer(deps: ServerDeps): Promise<FastifyInstance> {
       await v1.register(allowedDomainRoutes);
       await v1.register(settingsRoutes);
       await v1.register(scanRoutes, { queue, resolver: deps.resolver, storage });
+      await v1.register(websiteRoutes, { queue, resolver: deps.resolver });
     },
     { prefix: API_PREFIX },
   );

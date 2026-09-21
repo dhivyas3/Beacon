@@ -10,6 +10,7 @@ import {
 export const scanInclude = {
   triggeredByUser: { select: { id: true, name: true } },
   triggeredByApiKey: { select: { id: true, name: true } },
+  website: { select: { id: true, name: true } },
 } satisfies Prisma.ScanInclude;
 
 export type ScanRow = Prisma.ScanGetPayload<{ include: typeof scanInclude }>;
@@ -66,6 +67,9 @@ export function toScanDto(
     runNumber: row.runNumber,
     status: row.status,
     checks: row.checks as Scan['checks'],
+    triggeredByType: row.triggeredByType,
+    website: row.website ? { id: row.website.id, name: row.website.name } : null,
+    pageSelectionMode: row.pageSelectionMode,
     formMode: row.formMode,
     callbackUrl: row.callbackUrl,
     metadata: asRecord(row.metadata),

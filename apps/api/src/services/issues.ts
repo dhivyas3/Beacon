@@ -1,4 +1,4 @@
-import { Prisma, type Db } from '@beacon/db';
+import { findPreviousScan, Prisma, type Db } from '@beacon/db';
 import {
   computeHealthScore,
   type ComparisonLabel,
@@ -15,28 +15,21 @@ import { issueInclude, toIssueDto, type IssueRow, type ViewContext } from './sca
 interface ScanRef {
   id: string;
   hostname: string;
+  websiteId: string | null;
+  previousScanId: string | null;
   createdAt: Date;
 }
 
 /**
  * Labels fingerprints as `new` or `still_open` relative to the previous completed scan of the
- * hostname. Returns null when there is no previous scan, so the UI shows no labels at all.
+ * same website (or of no website, for one-off scans). Returns null when there is no previous scan, so the UI shows no labels at all.
  */
 export async function comparisonLabels(
   db: Db,
   scan: ScanRef,
   fingerprints: string[],
 ): Promise<Map<string, ComparisonLabel> | null> {
-  const previous = await db.scan.findFirst({
-    where: {
-      hostname: scan.hostname,
-      status: 'completed',
-      id: { not: scan.id },
-      createdAt: { lt: scan.createdAt },
-    },
-    orderBy: { createdAt: 'desc' },
-    select: { id: true },
-  });
+  const previous = await findPreviousScan(db, scan);
   if (!previous) return null;
 
   const known = new Set(
@@ -237,7 +230,7 @@ export async function updateIssue(
 
   const scanRef = await db.scan.findUniqueOrThrow({
     where: { id: scanId },
-    select: { id: true, hostname: true, createdAt: true },
+    select: { id: true, hostname: true, websiteId: true, previousScanId: true, createdAt: true },
   });
   const labels = await comparisonLabels(db, scanRef, [row.fingerprint]);
   return toIssueDto(row, ctx, labels?.get(row.fingerprint) ?? null);

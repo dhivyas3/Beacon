@@ -1,15 +1,25 @@
-import { isUniqueViolation, Prisma, type Db } from '@beacon/db';
+import {
+  ActiveScanError,
+  createQueuedScan,
+  findPreviousScan,
+  isUniqueViolation,
+  previousDurationMs,
+  Prisma,
+  type Db,
+} from '@beacon/db';
 import {
   isHostAllowed,
-  newId,
   normalizeUrl,
   type CheckType,
   type CreateScanBody,
   type FormMode,
   type ListScansQuery,
   type Page,
+  SAMPLE_SIZE,
   type Scan,
   type ScanDetail,
+  type TriggerType,
+  websiteConfigProblems,
 } from '@beacon/shared';
 import { assertPublicUrl, UrlBlockedError, type HostResolver } from '@beacon/net';
 import type { ApiConfig } from '../config.js';
@@ -79,10 +89,23 @@ export class ScanService {
       );
     }
 
-    const url = normalizeUrl(body.url);
+    const website =
+      body.websiteId === undefined
+        ? null
+        : await db.website.findUnique({ where: { id: body.websiteId } });
+    if (body.websiteId !== undefined && website === null) throw notFound('Website', body.websiteId);
+
+    const url = normalizeUrl(body.url ?? website?.url ?? '');
     if (url === null)
       throw new ApiError('validation_error', 'The url is not a valid http or https address.');
     const hostname = new URL(url).hostname.toLowerCase();
+    if (website !== null && hostname !== website.hostname) {
+      throw new ApiError(
+        'validation_error',
+        `The url is on ${hostname}, but ${website.name} is ${website.hostname}. Leave the url out to check the website itself.`,
+        { field: 'url', websiteId: website.id },
+      );
+    }
 
     const allowed = await db.allowedDomain.findMany({ select: { hostname: true } });
     if (
@@ -103,57 +126,51 @@ export class ScanService {
       await this.assertReachablePublicly(body.callbackUrl, 'callbackUrl');
 
     const settings = await loadSettings(db, config);
-    const checks: CheckType[] = [...new Set(body.checks ?? settings.defaultChecks)];
-    let formMode: FormMode = body.formMode ?? settings.defaultFormMode;
+    // A website's own configuration is what its scheduled runs use, so a manual check runs the same
+    // way unless the request overrides it. The website's form mode was authorised when it was saved.
+    const checks: CheckType[] = [
+      ...new Set(
+        body.checks ??
+          (website?.enabledChecks as CheckType[] | undefined) ??
+          settings.defaultChecks,
+      ),
+    ];
+    let formMode: FormMode = body.formMode ?? website?.formMode ?? settings.defaultFormMode;
     if (
       body.formMode === undefined &&
+      website === null &&
       formMode === 'submit' &&
       !actor.scopes.includes('forms:submit')
     ) {
       formMode = 'detect';
     }
 
-    const seedDurationMs = await this.previousDurationMs(hostname);
+    const selection = this.resolveSelection(body, website, url);
+    const triggeredByType: TriggerType =
+      actor.kind === 'user' ? 'manual_ui' : (body.source ?? 'manual_api');
+    const seedDurationMs = await previousDurationMs(db, hostname);
 
     try {
-      const row = await db.$transaction(async (tx) => {
-        // The counter row is locked for the rest of the transaction, so concurrent requests for the
-        // same hostname run one after another and the loser sees the winner's active scan below.
-        const counter = await tx.hostnameCounter.upsert({
-          where: { hostname },
-          create: { hostname, last: 1 },
-          update: { last: { increment: 1 } },
-        });
-
-        const active = await tx.scan.findFirst({
-          where: { hostname, status: { in: [...ACTIVE] } },
-          include: scanInclude,
-        });
-        if (active) throw new ActiveScanFound(active);
-
-        return tx.scan.create({
-          data: {
-            id: newId('scn'),
-            url,
-            hostname,
-            runNumber: counter.last,
-            status: 'queued',
-            checks,
-            formMode,
-            callbackUrl: body.callbackUrl ?? null,
-            ...(body.metadata === undefined
-              ? {}
-              : { metadata: body.metadata as Prisma.InputJsonObject }),
-            idempotencyKey,
-            triggeredByUserId: actor.kind === 'user' ? actor.id : null,
-            triggeredByApiKeyId: actor.kind === 'api_key' ? actor.id : null,
-            pageConcurrency: config.PAGE_CONCURRENCY,
-            linkConcurrency: config.LINK_CONCURRENCY,
-            seedDurationMs,
-          },
-          include: scanInclude,
-        });
+      const created = await createQueuedScan(db, {
+        url,
+        hostname,
+        checks,
+        formMode,
+        callbackUrl: body.callbackUrl ?? null,
+        ...(body.metadata === undefined
+          ? {}
+          : { metadata: body.metadata as Prisma.InputJsonObject }),
+        idempotencyKey,
+        triggeredByUserId: actor.kind === 'user' ? actor.id : null,
+        triggeredByApiKeyId: actor.kind === 'api_key' ? actor.id : null,
+        triggeredByType,
+        websiteId: website?.id ?? null,
+        ...selection,
+        pageConcurrency: config.PAGE_CONCURRENCY,
+        linkConcurrency: config.LINK_CONCURRENCY,
+        seedDurationMs,
       });
+      const row = await this.getRow(created.id);
 
       try {
         await this.deps.queue.enqueue(row.id);
@@ -171,7 +188,7 @@ export class ScanService {
 
       return { scan: await this.toDto(row), replayed: false };
     } catch (error) {
-      const raced = error instanceof ActiveScanFound || isUniqueViolation(error);
+      const raced = error instanceof ActiveScanError || isUniqueViolation(error);
       if (raced) {
         // A concurrent request got there first. If it carried our Idempotency-Key it is a retry of
         // this same request, so answer with that scan rather than a conflict.
@@ -179,7 +196,6 @@ export class ScanService {
           const existing = await this.findByIdempotencyKey(idempotencyKey);
           if (existing) return { scan: await this.toDto(existing), replayed: true };
         }
-        if (error instanceof ActiveScanFound) throw await this.conflict(error.scan);
         const active = await db.scan.findFirst({
           where: { hostname, status: { in: [...ACTIVE] } },
           include: scanInclude,
@@ -188,6 +204,49 @@ export class ScanService {
       }
       throw error;
     }
+  }
+
+  /**
+   * Which pages the scan checks: what the request says, else what the website says, else every
+   * page. Lists are normalised, and a selection that cannot work is refused before the scan exists.
+   */
+  private resolveSelection(
+    body: CreateScanBody,
+    website: {
+      pageSelectionMode: 'full' | 'static_list' | 'random_sample';
+      staticPageUrls: string[];
+      pinnedPageUrls: string[];
+      sampleSize: number;
+    } | null,
+    url: string,
+  ) {
+    const normalise = (urls: readonly string[]): string[] => [
+      ...new Set(urls.map((entry) => normalizeUrl(entry)).filter((entry) => entry !== null)),
+    ];
+    const pageSelectionMode = body.pageSelectionMode ?? website?.pageSelectionMode ?? 'full';
+    const staticPageUrls = normalise(body.staticPageUrls ?? website?.staticPageUrls ?? []);
+    const pinnedPageUrls = normalise(body.pinnedPageUrls ?? website?.pinnedPageUrls ?? []);
+    const sampleSize = body.sampleSize ?? website?.sampleSize ?? SAMPLE_SIZE.default;
+
+    const problems = websiteConfigProblems({
+      url,
+      checkFrequency: 'manual',
+      scheduleDayOfWeek: null,
+      scheduleDayOfMonth: null,
+      pageSelectionMode,
+      staticPageUrls,
+      pinnedPageUrls,
+      sampleSize,
+      enabledChecks: ['images'],
+    }).filter((problem) =>
+      ['staticPageUrls', 'pinnedPageUrls', 'sampleSize'].includes(problem.field),
+    );
+    if (problems.length > 0) {
+      throw new ApiError('validation_error', problems.map((p) => p.message).join(' '), {
+        problems,
+      });
+    }
+    return { pageSelectionMode, staticPageUrls, pinnedPageUrls, sampleSize };
   }
 
   async list(query: ListScansQuery): Promise<Page<Scan>> {
@@ -236,9 +295,21 @@ export class ScanService {
 
     let fixedIssueCount = 0;
     if (previous && row.status === 'completed') {
+      // A scan of a sample only re-checks some pages. An issue on a page that was not looked at
+      // again is not fixed, just unseen, so only pages present in both scans (and site-wide issues)
+      // can be counted as fixed.
+      const onlyRechecked =
+        row.pageSelectionMode === 'full'
+          ? Prisma.empty
+          : Prisma.sql`AND (i."pageId" IS NULL OR pp."url" IN (SELECT "url" FROM "ScanPage" WHERE "scanId" = ${id}))`;
       const rowsFixed = await db.$queryRaw<{ count: number }[]>(Prisma.sql`
         SELECT COUNT(*)::int AS count
-        FROM (SELECT DISTINCT "fingerprint" FROM "ScanIssue" WHERE "scanId" = ${previous.id}) p
+        FROM (
+          SELECT DISTINCT i."fingerprint"
+          FROM "ScanIssue" i
+          LEFT JOIN "ScanPage" pp ON pp."id" = i."pageId"
+          WHERE i."scanId" = ${previous.id} ${onlyRechecked}
+        ) p
         WHERE NOT EXISTS (
           SELECT 1 FROM "ScanIssue" c WHERE c."scanId" = ${id} AND c."fingerprint" = p."fingerprint"
         )`);
@@ -292,34 +363,16 @@ export class ScanService {
     return this.get(id);
   }
 
-  /** The most recent completed scan of the same hostname that started before this one. */
-  async previousCompleted(row: { id: string; hostname: string; createdAt: Date }) {
-    return this.deps.db.scan.findFirst({
-      where: {
-        hostname: row.hostname,
-        status: 'completed',
-        id: { not: row.id },
-        createdAt: { lt: row.createdAt },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
+  /** The completed scan this one is compared with. See `findPreviousScan`. */
+  async previousCompleted(row: ScanRow) {
+    return findPreviousScan(this.deps.db, row);
   }
 
   private async findByIdempotencyKey(key: string): Promise<ScanRow | null> {
     return this.deps.db.scan.findUnique({ where: { idempotencyKey: key }, include: scanInclude });
   }
 
-  private async previousDurationMs(hostname: string): Promise<number | null> {
-    const previous = await this.deps.db.scan.findFirst({
-      where: { hostname, status: 'completed', startedAt: { not: null }, finishedAt: { not: null } },
-      orderBy: { createdAt: 'desc' },
-      select: { startedAt: true, finishedAt: true },
-    });
-    if (!previous?.startedAt || !previous.finishedAt) return null;
-    return Math.max(0, previous.finishedAt.getTime() - previous.startedAt.getTime());
-  }
-
-  private async assertReachablePublicly(url: string, field: 'url' | 'callbackUrl'): Promise<void> {
+  async assertReachablePublicly(url: string, field: 'url' | 'callbackUrl'): Promise<void> {
     try {
       await assertPublicUrl(url, {
         allowLocal: this.deps.config.ALLOW_LOCAL_TARGETS,
@@ -343,12 +396,5 @@ export class ScanService {
       `A scan of ${active.hostname} is already ${active.status}. Wait for it to finish or cancel it first.`,
       { scan: await this.toDto(active) },
     );
-  }
-}
-
-/** Thrown inside the create transaction to abort it when the hostname already has a live scan. */
-class ActiveScanFound extends Error {
-  constructor(readonly scan: ScanRow) {
-    super('active scan found');
   }
 }

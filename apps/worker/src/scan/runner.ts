@@ -1,5 +1,5 @@
 import { setMaxListeners } from 'node:events';
-import { loadStoredSettings, type Db, type Prisma } from '@beacon/db';
+import { findPreviousScan, loadStoredSettings, type Db, type Prisma } from '@beacon/db';
 import { createSafeClient, type HostResolver } from '@beacon/net';
 import {
   computeHealthScore,
@@ -29,7 +29,9 @@ import { discoverPages, DiscoveryError, type DiscoveryResult } from './discovery
 import { IssueWriter } from './issue-writer.js';
 import { LinkStore } from './link-store.js';
 import { ProgressTracker } from './progress.js';
+import { loadLastChecked, sampledDiscovery, staticPages } from './page-selection.js';
 import { PageScreenshots } from './screenshots.js';
+import { recordWebsiteOutcome } from './website-outcome.js';
 
 export interface RunnerDeps {
   db: Db;
@@ -49,6 +51,8 @@ export interface RunnerDeps {
   shutdownSignal?: AbortSignal;
   /** Live progress, for streaming to dashboards. */
   onProgress?: (scanId: string, progress: Progress) => void;
+  /** A number in [0, 1) used to sample pages. Tests replace it to be deterministic. */
+  random?: () => number;
   /** Called once a scan reaches a final state, to send callbacks. */
   onFinished?: (scanId: string, status: 'completed' | 'failed') => Promise<void> | void;
 }
@@ -120,7 +124,10 @@ export async function runScan(deps: RunnerDeps, scanId: string): Promise<void> {
       where: { id: scanId, status: { in: ['discovering', 'running'] } },
       data: { status: 'failed', stage: null, errorMessage: message, finishedAt: new Date() },
     });
-    if (failed.count === 1) await deps.onFinished?.(scanId, 'failed');
+    if (failed.count === 1) {
+      await recordWebsiteOutcome(db, log, scan, { status: 'failed', message });
+      await deps.onFinished?.(scanId, 'failed');
+    }
   };
 
   /**
@@ -153,20 +160,46 @@ export async function runScan(deps: RunnerDeps, scanId: string): Promise<void> {
     );
 
     // ---- Discovery ----------------------------------------------------------------------------
-    const discovery = await discoverPages({
-      startUrl: scan.url,
-      maxPages: config.MAX_PAGES,
-      client,
-      limiter,
-      concurrency: scan.pageConcurrency,
-      signal,
-      log,
-      onProgress: (found) => {
-        progress.pagesFound = found;
-      },
-      isHostAllowed: (hostname) => isHostAllowed(hostname, allowedEntries),
-    });
-    if (signal.aborted) return halt();
+    // Which pages are checked depends on the scan. A list is used as given, with no discovery. A
+    // sample discovers everything, then narrows it. A full scan checks everything it discovers.
+    const isAllowed = (hostname: string): boolean => isHostAllowed(hostname, allowedEntries);
+    let discovery: DiscoveryResult;
+    if (scan.pageSelectionMode === 'static_list') {
+      discovery = staticPages({
+        url: scan.url,
+        pages: scan.staticPageUrls,
+        allowedEntries,
+      });
+      progress.pagesFound = discovery.pages.length;
+    } else {
+      discovery = await discoverPages({
+        startUrl: scan.url,
+        maxPages: config.MAX_PAGES,
+        client,
+        limiter,
+        concurrency: scan.pageConcurrency,
+        signal,
+        log,
+        onProgress: (found) => {
+          progress.pagesFound = found;
+        },
+        isHostAllowed: isAllowed,
+      });
+      if (signal.aborted) return halt();
+      if (scan.pageSelectionMode === 'random_sample') {
+        const lastChecked = scan.websiteId
+          ? await loadLastChecked(db, scan.websiteId, scanId)
+          : new Map<string, number>();
+        const discovered = discovery.pages.length;
+        discovery = sampledDiscovery(discovery, {
+          size: scan.sampleSize,
+          pinned: scan.pinnedPageUrls,
+          lastChecked,
+          random: deps.random ?? Math.random,
+        });
+        log.info({ discovered, sampled: discovery.pages.length }, 'sampled pages to check');
+      }
+    }
 
     const templates = computeTemplates(discovery.pages.map((page) => page.url));
     const pageRows = discovery.pages.map((page) => ({
@@ -197,7 +230,9 @@ export async function runScan(deps: RunnerDeps, scanId: string): Promise<void> {
     await progress.flush();
 
     const writer = new IssueWriter(db, scanId, progress);
-    await writeDiscoveryFindings(writer, requested, discovery, pageRows);
+    if (scan.pageSelectionMode !== 'static_list') {
+      await writeDiscoveryFindings(writer, requested, discovery, pageRows);
+    }
 
     // ---- Pages --------------------------------------------------------------------------------
     browser = await BrowserSession.launch({
@@ -393,10 +428,12 @@ export async function runScan(deps: RunnerDeps, scanId: string): Promise<void> {
       skipDuplicates: true,
     });
 
+    const previous = await findPreviousScan(db, { ...scan, previousScanId: null });
     const done = await db.scan.updateMany({
       where: { id: scanId, status: 'running' },
       data: {
         status: 'completed',
+        previousScanId: previous?.id ?? null,
         stage: null,
         criticalCount: critical,
         warningCount: warnings,
@@ -412,6 +449,7 @@ export async function runScan(deps: RunnerDeps, scanId: string): Promise<void> {
     });
     if (done.count === 1) {
       log.info({ critical, warnings, pages: pageRows.length }, 'scan completed');
+      await recordWebsiteOutcome(db, log, scan, { status: 'completed' });
       await deps.onFinished?.(scanId, 'completed');
     }
   } catch (error) {

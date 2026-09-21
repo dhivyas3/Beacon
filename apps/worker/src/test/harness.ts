@@ -109,6 +109,11 @@ export async function insertQueuedScan(
     pageConcurrency?: number;
     linkConcurrency?: number;
     formMode?: FormMode;
+    websiteId?: string;
+    pageSelectionMode?: 'full' | 'static_list' | 'random_sample';
+    staticPageUrls?: string[];
+    pinnedPageUrls?: string[];
+    sampleSize?: number;
     /** Overrides the hostname derived from the url, to avoid the one-active-scan-per-host rule. */
     hostname?: string;
   } = {},
@@ -126,6 +131,11 @@ export async function insertQueuedScan(
       pageConcurrency: options.pageConcurrency ?? 3,
       linkConcurrency: options.linkConcurrency ?? 5,
       formMode: options.formMode ?? 'detect',
+      websiteId: options.websiteId ?? null,
+      pageSelectionMode: options.pageSelectionMode ?? 'full',
+      staticPageUrls: options.staticPageUrls ?? [],
+      pinnedPageUrls: options.pinnedPageUrls ?? [],
+      sampleSize: options.sampleSize ?? 10,
     },
   });
   return id;

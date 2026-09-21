@@ -1,6 +1,16 @@
 import { z } from 'zod';
 import { EXAMPLE_SCAN } from './examples.js';
-import { CHECK_TYPES, FORM_MODES, SCAN_STATUSES } from '../constants.js';
+import {
+  CHECK_TYPES,
+  EXTERNAL_TRIGGER_SOURCES,
+  FORM_MODES,
+  MAX_PINNED_PAGES,
+  MAX_STATIC_PAGES,
+  PAGE_SELECTION_MODES,
+  SAMPLE_SIZE,
+  SCAN_STATUSES,
+  TRIGGER_TYPES,
+} from '../constants.js';
 import { HttpUrlSchema, MetadataSchema, PaginationQuerySchema } from './common.js';
 import { ProgressSchema } from './progress.js';
 
@@ -38,6 +48,12 @@ export const ScanSchema = z
     progress: ProgressSchema,
     summary: ScanSummarySchema,
     triggeredBy: TriggeredBySchema.nullable(),
+    triggeredByType: z.enum(TRIGGER_TYPES).describe('Where this scan came from.'),
+    website: z
+      .object({ id: z.string(), name: z.string() })
+      .nullable()
+      .describe('The registered website this is a check of, or null for a one-off scan.'),
+    pageSelectionMode: z.enum(PAGE_SELECTION_MODES),
     errorMessage: z.string().nullable(),
     createdAt: z.iso.datetime(),
     startedAt: z.iso.datetime().nullable(),
@@ -77,16 +93,47 @@ export type ScanDetail = z.infer<typeof ScanDetailSchema>;
 
 export const CreateScanBodySchema = z
   .object({
-    url: HttpUrlSchema.describe('The live site to scan. Its hostname must be on the allowed list.'),
-    checks: z.array(z.enum(CHECK_TYPES)).min(1).optional().describe('Defaults to every check.'),
+    url: HttpUrlSchema.optional().describe(
+      'The live site to scan. Its hostname must be on the allowed list. Optional when `websiteId` is given.',
+    ),
+    websiteId: z
+      .string()
+      .min(1)
+      .max(64)
+      .optional()
+      .describe(
+        'Run this scan as a check of a registered website. Its checks, form mode and page selection are used unless overridden here.',
+      ),
+    source: z
+      .enum(EXTERNAL_TRIGGER_SOURCES)
+      .optional()
+      .describe('API keys only: mark the scan as started by n8n or monday.com.'),
+    checks: z
+      .array(z.enum(CHECK_TYPES))
+      .min(1)
+      .optional()
+      .describe("Defaults to the website's checks, or every check."),
     formMode: z
       .enum(FORM_MODES)
       .optional()
-      .describe('`submit` requires the `forms:submit` scope. Defaults to `detect`.'),
+      .describe(
+        "`submit` requires the `forms:submit` scope. Defaults to the website's form mode, or `detect`.",
+      ),
+    pageSelectionMode: z
+      .enum(PAGE_SELECTION_MODES)
+      .optional()
+      .describe("Defaults to the website's mode, or `full` for a scan of no website."),
+    staticPageUrls: z.array(HttpUrlSchema).max(MAX_STATIC_PAGES).optional(),
+    pinnedPageUrls: z.array(HttpUrlSchema).max(MAX_PINNED_PAGES).optional(),
+    sampleSize: z.number().int().min(SAMPLE_SIZE.min).max(SAMPLE_SIZE.max).optional(),
     callbackUrl: HttpUrlSchema.optional().describe(
       'Receives a signed POST when the scan completes, fails or is cancelled.',
     ),
     metadata: MetadataSchema.optional(),
+  })
+  .refine((body) => body.url !== undefined || body.websiteId !== undefined, {
+    message: 'Give a url, or a websiteId to check.',
+    path: ['url'],
   })
   .meta({
     id: 'CreateScanBody',

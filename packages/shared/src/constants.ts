@@ -20,6 +20,30 @@ export const CHECK_LABELS: Record<CheckType, string> = {
 export const FORM_MODES = ['detect', 'validate_only', 'submit'] as const;
 export type FormMode = (typeof FORM_MODES)[number];
 
+/** How often a website is checked. `manual` means only when someone asks. */
+export const CHECK_FREQUENCIES = ['manual', 'daily', 'weekly', 'monthly'] as const;
+export type CheckFrequency = (typeof CHECK_FREQUENCIES)[number];
+
+/**
+ * Which pages a scan checks. `full` discovers and checks every page. `static_list` checks exactly
+ * the listed URLs. `random_sample` discovers every page, then checks a sample of them.
+ */
+export const PAGE_SELECTION_MODES = ['full', 'static_list', 'random_sample'] as const;
+export type PageSelectionMode = (typeof PAGE_SELECTION_MODES)[number];
+
+/** Where a scan came from, shown in the dashboard and in history. */
+export const TRIGGER_TYPES = ['manual_ui', 'manual_api', 'scheduled', 'n8n', 'monday'] as const;
+export type TriggerType = (typeof TRIGGER_TYPES)[number];
+
+/** Triggers an API caller may claim for itself with the `source` field. */
+export const EXTERNAL_TRIGGER_SOURCES = ['n8n', 'monday'] as const;
+export type ExternalTriggerSource = (typeof EXTERNAL_TRIGGER_SOURCES)[number];
+
+export const SAMPLE_SIZE = { min: 1, max: 100, default: 10 } as const;
+export const MAX_STATIC_PAGES = 50;
+export const MAX_PINNED_PAGES = 20;
+export const MAX_RECIPIENTS = 20;
+
 export const SCAN_STATUSES = [
   'queued',
   'discovering',
@@ -78,6 +102,8 @@ export const ID_PREFIXES = {
   webhookDelivery: 'whd',
   link: 'lnk',
   linkSource: 'lns',
+  website: 'web',
+  recipient: 'rcp',
 } as const;
 export type IdPrefix = (typeof ID_PREFIXES)[keyof typeof ID_PREFIXES];
 
