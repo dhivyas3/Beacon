@@ -89,6 +89,11 @@ export class LocalStorage implements Storage {
   }
 }
 
+/** Every screenshot of a scan lives under this prefix, so deleting the scan can remove them all. */
+export function screenshotPrefix(scanId: string): string {
+  return `screenshots/${scanId}/`;
+}
+
 export function screenshotKey(scanId: string, issueId: string): string {
-  return `screenshots/${scanId}/${issueId}.png`;
+  return `${screenshotPrefix(scanId)}${issueId}.png`;
 }

@@ -123,9 +123,9 @@ Versioned under `/api/v1`, authenticated by an API key (`Authorization: Bearer b
 the dashboard, a session cookie. OpenAPI 3.1 is served at `/api/docs`.
 
 - **Scans:** create, list, get (with per-check results, previous scan and score change), cancel,
-  issues (flat or grouped by fingerprint), ignore or reopen an issue, screenshots, pages, the
-  problems fixed since the previous check, a live event stream (`/events`, server-sent), and CSV
-  and PDF exports.
+  delete, issues (flat or grouped by fingerprint), ignore or reopen an issue, screenshots, pages,
+  the problems fixed since the previous check, a live event stream (`/events`, server-sent), and
+  CSV and PDF exports.
 - **Websites:** create, list, get, update, delete, `check-now`, `history`, recipients.
 - **Admin:** API keys, allowed domains, settings.
 - **Conventions:** JSON error envelope `{ error: { code, message, details? } }`, cursor

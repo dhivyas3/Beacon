@@ -2,7 +2,7 @@ import { mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { InvalidStorageKeyError, LocalStorage, screenshotKey } from './index.js';
+import { InvalidStorageKeyError, LocalStorage, screenshotKey, screenshotPrefix } from './index.js';
 
 let dir: string;
 let storage: LocalStorage;
@@ -23,6 +23,11 @@ describe('LocalStorage', () => {
     const object = await storage.get(key);
     expect(object?.data.toString()).toBe('png-bytes');
     expect(object?.contentType).toBe('image/png');
+  });
+
+  it('keys every screenshot of a scan under one prefix', () => {
+    expect(screenshotKey('scn_abc', 'iss_def')).toBe('screenshots/scn_abc/iss_def.png');
+    expect(screenshotKey('scn_abc', 'iss_def').startsWith(screenshotPrefix('scn_abc'))).toBe(true);
   });
 
   it('returns null for a missing key', async () => {

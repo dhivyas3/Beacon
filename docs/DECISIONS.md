@@ -417,3 +417,13 @@ Nothing to install: Schedule Trigger, Webhook, Set, Code, IF, Respond to Webhook
 ## 2026-09-24 Deployment: Caddy in front of the web container, unverified
 
 `deploy/Caddyfile` and `deploy/docker-compose.caddy.yml` put Caddy (automatic HTTPS) in front of the existing web container, which already proxies `/api` to the API, and stop publishing the web port. `flush_interval -1` keeps the event stream flowing. Docker was not available, so neither the base compose file nor this override has been run, as with the earlier phases; `docs/DEPLOYMENT.md` says so at the top. The pieces they start are the ones `pnpm e2e` runs.
+
+## 2026-09-23 Deleting a scan
+
+`DELETE /scans/:id` is a hard delete, not a soft one: there is no "trash" anywhere else in Beacon (deleting a website already hard-deletes the `Website` row, keeping its scans as one-off ones), so a second, different deletion model just for scans would be its own thing to explain. It needs `scans:write`, the same scope `cancel` already needs, rather than `admin`: an API key that can start and cancel checks can already make just as much of a mess, and splitting the two would mean giving out `admin` for what is otherwise an ordinary scan action.
+
+A scan that is queued, discovering or running cannot be deleted (`409`, the same shape as a cancel of a finished scan): the worker is still writing pages and issues to it, and deleting the row out from under a live foreign key would either fail confusingly or, worse, half-succeed. Cancel it first, then delete it.
+
+Nothing elsewhere breaks: `ScanPage`, `ScanIssue`, `CheckResult`, `WebhookDelivery` and `EmailDelivery` all cascade with the scan, and a later scan's `previousScanId` is set null rather than the delete being refused (already how the schema was written), so it just stops being compared against something that no longer exists. A website's `latest`, history and page counts are computed live from whatever scans remain, so deleting one is not a special case there either. The one thing not in Postgres is screenshots, which live on disk: `ScanService.delete` best-effort removes `storage.deletePrefix(screenshotPrefix(id))` after the row is gone, so a delete that could not reach the screenshots because of some ephemeral IO wobble does not also fail to remove the record.
+
+Run numbers are not renumbered after a delete (`@@unique([hostname, runNumber])` on what is left), so a hostname can show runs #1, #4, #7 with gaps in between. That is the honest history rather than a claim that nothing was ever removed.

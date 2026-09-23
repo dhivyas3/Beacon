@@ -2,7 +2,16 @@ import { Queue } from 'bullmq';
 import type { LightMyRequestResponse } from 'fastify';
 import { Redis } from 'ioredis';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { bearer, createTestApp, errorOf, type TestApp } from '../test/helpers.js';
+import { screenshotKey } from '@beacon/storage';
+import {
+  bearer,
+  createTestApp,
+  errorOf,
+  insertIssue,
+  insertPage,
+  insertScan,
+  type TestApp,
+} from '../test/helpers.js';
 
 let ctx: TestApp;
 let writer: string;
@@ -642,5 +651,85 @@ describe('POST /scans/:id/cancel', () => {
       headers: bearer(reader),
     });
     expect(readOnly.statusCode).toBe(403);
+  });
+});
+
+describe('DELETE /scans/:id', () => {
+  it('removes a finished scan, its pages, issues and screenshots', async () => {
+    const id = await insertScan(ctx.db, { hostname: 'delete-me.example.com' });
+    const pageId = await insertPage(ctx.db, id, 'https://delete-me.example.com/');
+    const issueId = await insertIssue(ctx.db, { scanId: id, pageId, fingerprint: 'fp-1' });
+    const key = screenshotKey(id, issueId);
+    await ctx.storage.put(key, Buffer.from('png-bytes'));
+    await ctx.db.scanIssue.update({ where: { id: issueId }, data: { screenshotPath: key } });
+
+    const res = await ctx.app.inject({
+      method: 'DELETE',
+      url: `/api/v1/scans/${id}`,
+      headers: bearer(writer),
+    });
+    expect(res.statusCode).toBe(204);
+    expect(res.body).toBe('');
+
+    expect(await ctx.db.scan.findUnique({ where: { id } })).toBeNull();
+    expect(await ctx.db.scanPage.findMany({ where: { scanId: id } })).toEqual([]);
+    expect(await ctx.db.scanIssue.findMany({ where: { scanId: id } })).toEqual([]);
+    expect(await ctx.storage.get(key)).toBeNull();
+  });
+
+  it('leaves a later scan without a previousScan rather than failing', async () => {
+    const host = new URL(freshUrl()).hostname;
+    const earlier = await insertScan(ctx.db, { hostname: host, runNumber: 1 });
+    const later = await insertScan(ctx.db, {
+      hostname: host,
+      runNumber: 2,
+      previousScanId: earlier,
+    });
+
+    const res = await ctx.app.inject({
+      method: 'DELETE',
+      url: `/api/v1/scans/${earlier}`,
+      headers: bearer(writer),
+    });
+    expect(res.statusCode).toBe(204);
+
+    const row = await ctx.db.scan.findUniqueOrThrow({ where: { id: later } });
+    expect(row.previousScanId).toBeNull();
+
+    const detail = await getScan(later);
+    expect(detail.statusCode).toBe(200);
+    expect(detail.json<{ previousScan: unknown }>().previousScan).toBeNull();
+  });
+
+  it('answers 409 for an active scan, 404 for unknown, 403 without write scope, 401 signed out', async () => {
+    const id = (await createScan({ url: freshUrl() })).json<{ id: string }>().id;
+
+    const active = await ctx.app.inject({
+      method: 'DELETE',
+      url: `/api/v1/scans/${id}`,
+      headers: bearer(writer),
+    });
+    expect(active.statusCode).toBe(409);
+    expect(errorOf(active).code).toBe('conflict');
+    // Refused, so it is still there.
+    expect(await ctx.db.scan.findUnique({ where: { id } })).not.toBeNull();
+
+    const unknown = await ctx.app.inject({
+      method: 'DELETE',
+      url: '/api/v1/scans/scn_nope',
+      headers: bearer(writer),
+    });
+    expect(unknown.statusCode).toBe(404);
+
+    const done = await insertScan(ctx.db, { hostname: 'read-only-delete.example.com' });
+    const readOnly = await ctx.app.inject({
+      method: 'DELETE',
+      url: `/api/v1/scans/${done}`,
+      headers: bearer(reader),
+    });
+    expect(readOnly.statusCode).toBe(403);
+
+    const signedOut = await ctx.app.inject({ method: 'DELETE', url: `/api/v1/scans/${done}` });
+    expect(signedOut.statusCode).toBe(401);
   });
 });

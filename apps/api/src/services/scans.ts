@@ -22,6 +22,7 @@ import {
   websiteConfigProblems,
 } from '@beacon/shared';
 import { assertPublicUrl, UrlBlockedError, type HostResolver } from '@beacon/net';
+import { screenshotPrefix, type Storage } from '@beacon/storage';
 import type { ApiConfig } from '../config.js';
 import { ApiError, notFound } from '../lib/errors.js';
 import { paginateById } from '../lib/pagination.js';
@@ -36,6 +37,8 @@ export interface ScanServiceDeps {
   config: ApiConfig;
   queue: ScanQueue;
   resolver: HostResolver | undefined;
+  /** Only needed for `delete`, which cleans up screenshots. Omit it where that is not called. */
+  storage?: Storage;
 }
 
 const ACTIVE = ['queued', 'discovering', 'running'] as const;
@@ -347,6 +350,29 @@ export class ScanService {
     // undo a cancellation that already happened.
     await queue.notifyFinished(id).catch(() => undefined);
     return this.get(id);
+  }
+
+  /**
+   * Permanently deletes a finished scan: its pages, issues, per-check results, callback and email
+   * delivery rows, and screenshots. A scan that is queued, discovering or running is refused;
+   * cancel it first. Deleting a scan another scan is compared against leaves that one with no
+   * `previousScan` rather than failing (see the schema: `onDelete: SetNull`).
+   */
+  async delete(id: string): Promise<void> {
+    const { db, storage } = this.deps;
+    const deleted = await db.scan.deleteMany({ where: { id, status: { notIn: [...ACTIVE] } } });
+    if (deleted.count === 0) {
+      const existing = await db.scan.findUnique({ where: { id }, select: { status: true } });
+      if (!existing) throw notFound('Scan', id);
+      throw new ApiError(
+        'conflict',
+        `This scan is still ${existing.status}. Cancel it before deleting it.`,
+        { status: existing.status },
+      );
+    }
+    // Screenshots live on disk, not in the database, so the cascade above drops the rows that
+    // pointed at them but not the files themselves. Best effort: a scan already gone either way.
+    await storage?.deletePrefix(screenshotPrefix(id)).catch(() => undefined);
   }
 
   /** The completed scan this one is compared with. See `findPreviousScan`. */

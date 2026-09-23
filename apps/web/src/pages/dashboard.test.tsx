@@ -368,3 +368,78 @@ describe('starting a scan', () => {
     expect(link).toHaveAttribute('href', '/scans/scn_existing');
   });
 });
+
+describe('deleting a scan', () => {
+  it('asks first, then removes it from the list', async () => {
+    let scans = [scan({ id: 'scn_done', hostname: 'www.example.com', runNumber: 3 })];
+    const api = fakeApi({
+      ...routes(),
+      'GET /scans': () => pageOf(scans),
+      'DELETE /scans/:id': (request) => {
+        scans = scans.filter((entry) => entry.id !== request.params.id);
+        return { status: 204 };
+      },
+    });
+    const user = userEvent.setup();
+    renderApp('/scans');
+    await screen.findByRole('link', { name: 'www.example.com' });
+
+    await user.click(
+      screen.getByRole('button', { name: 'Delete the check of www.example.com, run #3' }),
+    );
+    const dialog = await screen.findByRole('dialog', { name: 'Delete this scan?' });
+    expect(within(dialog).getByText(/run #3 of www.example.com/)).toBeInTheDocument();
+    expect(api.callsTo('DELETE', '/scans/scn_done')).toHaveLength(0);
+
+    await user.click(within(dialog).getByRole('button', { name: 'Delete scan' }));
+
+    await waitFor(() => expect(api.callsTo('DELETE', '/scans/scn_done')).toHaveLength(1));
+    expect(await screen.findByText('Scan deleted')).toBeInTheDocument();
+    await waitFor(() =>
+      expect(screen.queryByRole('link', { name: 'www.example.com' })).not.toBeInTheDocument(),
+    );
+  });
+
+  it('keeps the scan when the dialog is dismissed', async () => {
+    const api = fakeApi(routes([scan({ id: 'scn_keep' })]));
+    const user = userEvent.setup();
+    renderApp('/scans');
+    await screen.findByRole('link', { name: 'www.example.com' });
+
+    await user.click(
+      screen.getByRole('button', { name: 'Delete the check of www.example.com, run #1' }),
+    );
+    await user.click(await screen.findByRole('button', { name: 'Keep it' }));
+    await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
+    expect(api.callsTo('DELETE', '/scans/scn_keep')).toHaveLength(0);
+    expect(screen.getByRole('link', { name: 'www.example.com' })).toBeInTheDocument();
+  });
+
+  it('explains a failure and leaves the scan in the list', async () => {
+    fakeApi({
+      ...routes([scan({ id: 'scn_fail' })]),
+      'DELETE /scans/:id': () =>
+        apiError(409, 'conflict', 'This scan is still running. Cancel it before deleting it.'),
+    });
+    const user = userEvent.setup();
+    renderApp('/scans');
+    await screen.findByRole('link', { name: 'www.example.com' });
+    await user.click(
+      screen.getByRole('button', { name: 'Delete the check of www.example.com, run #1' }),
+    );
+    await user.click(await screen.findByRole('button', { name: 'Delete scan' }));
+    expect(
+      await screen.findByText('This scan is still running. Cancel it before deleting it.'),
+    ).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'www.example.com' })).toBeInTheDocument();
+  });
+
+  it('offers no delete button for a scan that is still active', async () => {
+    fakeApi(routes([scan({ id: 'scn_run', hostname: 'shop.example.com', status: 'running' })]));
+    renderApp('/scans');
+    await screen.findByRole('link', { name: 'shop.example.com' });
+    expect(
+      screen.queryByRole('button', { name: /Delete the check of shop.example.com/ }),
+    ).not.toBeInTheDocument();
+  });
+});

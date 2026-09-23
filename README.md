@@ -44,7 +44,7 @@ Open http://localhost:5173 and sign in with the seeded admin. In development the
 | --- | --- |
 | Overview | One card per website: latest score, change since the last check, critical and warnings, next check, and live progress for a check that is running. What needs attention comes first |
 | Websites | List, search, add and edit (schedule with your local time shown, which pages, checks, form mode, email on or off, recipients). Each website has a page with a score chart, the history of checks, **Check now**, pause, its configuration, its recipients and the log of emails sent |
-| Scans | Every scan, including one-off scans. Start a one-off scan, search and filter, see live progress for active scans, open a report |
+| Scans | Every scan, including one-off scans. Start a one-off scan, search and filter, see live progress for active scans, open a report, delete a finished one |
 | Scan in progress | Percentage, phase, pages per minute, elapsed time, estimated finish, and issues as they are found. Cancel with confirmation |
 | Report | Which website it is a check of (or that it is a one-off scan), health score with change since the last check, score trend, what was fixed since the last check, findings by check, and issues by page or grouped across pages. Each issue has its evidence and a screenshot. Ignore or reopen issues. **Export CSV** and **Export PDF** |
 | Settings | Create and revoke API keys (shown once), allowed domains, the webhook signing secret, scan defaults. Non-admins see the defaults read-only |
@@ -263,6 +263,9 @@ curl -s -H "authorization: Bearer $KEY" "$BASE/api/v1/scans/scn_.../issues?sever
 
 # 7. Cancel
 curl -s -X POST -H "authorization: Bearer $KEY" $BASE/api/v1/scans/scn_.../cancel
+
+# 8. Delete a finished scan (409 while it is still queued, discovering or running)
+curl -s -X DELETE -H "authorization: Bearer $KEY" $BASE/api/v1/scans/scn_...
 ```
 
 Errors always have the shape `{ "error": { "code", "message", "details"? } }`:

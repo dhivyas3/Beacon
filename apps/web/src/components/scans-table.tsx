@@ -1,9 +1,21 @@
-import type { Scan } from '@beacon/shared';
-import { CalendarClock, KeyRound, User, Workflow } from 'lucide-react';
+import { isActiveStatus, type Scan } from '@beacon/shared';
+import { CalendarClock, KeyRound, Trash2, User, Workflow } from 'lucide-react';
+import { useState } from 'react';
 import { Link, useNavigate } from 'react-router';
+import { toast } from 'sonner';
+import { ApiClientError } from '@/api/client';
+import { useDeleteScan } from '@/api/hooks';
 import { HealthScorePill } from '@/components/health-score';
 import { ScanProgress } from '@/components/scan-progress';
 import { StatusBadge } from '@/components/status-badge';
+import { Button } from '@/components/ui/button';
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogFooter,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 import { Skeleton } from '@/components/ui/skeleton';
 import { formatNumber, pathOf, relativeTime } from '@/lib/format';
 import { cn } from '@/lib/cn';
@@ -51,12 +63,62 @@ function TriggeredBy({ scan }: { scan: Scan }) {
   );
 }
 
+/** Confirms, then permanently deletes a finished scan. Hidden for one still queued or running. */
+function DeleteScanButton({ scan }: { scan: Scan }) {
+  const [open, setOpen] = useState(false);
+  const remove = useDeleteScan(scan.id);
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button
+          variant="ghost"
+          size="icon-sm"
+          aria-label={`Delete the check of ${scan.hostname}, run #${scan.runNumber}`}
+        >
+          <Trash2 className="size-4" aria-hidden />
+        </Button>
+      </DialogTrigger>
+      <DialogContent
+        title="Delete this scan?"
+        description={`Permanently removes run #${scan.runNumber} of ${scan.hostname}: its pages, issues and screenshots. This cannot be undone.`}
+      >
+        <DialogFooter>
+          <DialogClose asChild>
+            <Button>Keep it</Button>
+          </DialogClose>
+          <Button
+            variant="danger"
+            loading={remove.isPending}
+            onClick={() =>
+              remove.mutate(undefined, {
+                onSuccess: () => {
+                  setOpen(false);
+                  toast.success('Scan deleted');
+                },
+                onError: (error) => {
+                  setOpen(false);
+                  toast.error(
+                    error instanceof ApiClientError ? error.message : 'Could not delete the scan.',
+                  );
+                },
+              })
+            }
+          >
+            <Trash2 className="size-4" aria-hidden />
+            Delete scan
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
 /** Scans as a table. Running rows carry their live progress and time left. */
 export function ScansTable({ scans }: { scans: Scan[] }) {
   const navigate = useNavigate();
   return (
     <div className="scroll-x rounded-lg border border-border bg-surface shadow-card">
-      <table className="w-full min-w-[860px] border-collapse text-sm">
+      <table className="w-full min-w-[900px] border-collapse text-sm">
         <caption className="sr-only">Scans, newest first</caption>
         <thead className="border-b border-border">
           <tr>
@@ -86,6 +148,9 @@ export function ScansTable({ scans }: { scans: Scan[] }) {
             </th>
             <th scope="col" className={HEAD}>
               Started
+            </th>
+            <th scope="col" className={cn(HEAD, 'text-right')}>
+              <span className="sr-only">Actions</span>
             </th>
           </tr>
         </thead>
@@ -138,6 +203,13 @@ export function ScansTable({ scans }: { scans: Scan[] }) {
                 >
                   {relativeTime(scan.startedAt ?? scan.createdAt)}
                 </time>
+              </td>
+              <td className={cn(CELL, 'text-right')}>
+                {isActiveStatus(scan.status) ? (
+                  <span className="text-subtle">—</span>
+                ) : (
+                  <DeleteScanButton scan={scan} />
+                )}
               </td>
             </tr>
           ))}

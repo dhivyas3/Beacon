@@ -47,6 +47,7 @@ export const scanRoutes: FastifyPluginAsyncZod<ScanRouteOptions> = async (app, o
     config: app.config,
     queue: options.queue,
     resolver: options.resolver,
+    storage: options.storage,
   });
   const view = { publicUrl: app.config.PUBLIC_URL };
 
@@ -138,6 +139,30 @@ export const scanRoutes: FastifyPluginAsyncZod<ScanRouteOptions> = async (app, o
       },
     },
     async (request) => scans.cancel(request.params.id),
+  );
+
+  app.delete(
+    '/scans/:id',
+    {
+      config: { auth: 'scans:write' },
+      schema: {
+        tags: ['Scans'],
+        summary: 'Delete a scan',
+        description: [
+          'Permanently removes a finished scan: its pages, issues, evidence and screenshots.',
+          '',
+          'Refused with `409` for a scan that is queued, discovering or running; cancel it first.',
+          'A scan that another scan was compared against can still be deleted: the later scan keeps',
+          'its own record but its `previousScan` becomes null.',
+        ].join('\n'),
+        params: IdParamSchema,
+        response: { 204: z.null(), ...errorResponses(401, 403, 404, 409, 429) },
+      },
+    },
+    async (request, reply) => {
+      await scans.delete(request.params.id);
+      return reply.code(204).send(null);
+    },
   );
 
   app.get(

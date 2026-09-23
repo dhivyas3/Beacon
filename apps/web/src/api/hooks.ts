@@ -425,4 +425,18 @@ export function useCancelScan(scanId: string) {
   });
 }
 
+/** Permanently removes a finished scan. The scans list and any cached copy of it are dropped. */
+export function useDeleteScan(scanId: string) {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: () => api.scans.remove(scanId),
+    onSuccess: () => {
+      client.removeQueries({ queryKey: keys.scan(scanId) });
+      void client.invalidateQueries({ queryKey: ['scans'] });
+      void client.invalidateQueries({ queryKey: ['websites'] });
+      void client.invalidateQueries({ queryKey: ['website'] });
+    },
+  });
+}
+
 export type { ScanStatus };

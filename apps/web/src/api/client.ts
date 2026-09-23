@@ -170,6 +170,7 @@ export const api = {
         ...(idempotencyKey ? { headers: { 'idempotency-key': idempotencyKey } } : {}),
       }),
     cancel: (id: string) => request<Scan>('POST', `/scans/${id}/cancel`),
+    remove: (id: string) => request<void>('DELETE', `/scans/${id}`),
     pages: (id: string, filters: PageFilters, cursor?: string, limit = 25) =>
       request<Page<ScanPage>>('GET', `/scans/${id}/pages`, {
         query: { ...filters, cursor, limit },
