@@ -308,3 +308,4 @@ A report can be downloaded: `GET /api/v1/scans/:id/export.csv` (every issue, one
 - [docs/DECISIONS.md](docs/DECISIONS.md): choices made where the spec was open
 - [docs/INTEGRATIONS.md](docs/INTEGRATIONS.md): n8n and monday.com workflows, callbacks, email
 - [docs/DEPLOYMENT.md](docs/DEPLOYMENT.md): running it in production with HTTPS
+- [docs/RAILWAY.md](docs/RAILWAY.md): deploying to Railway specifically

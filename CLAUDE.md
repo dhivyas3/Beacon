@@ -87,6 +87,8 @@ local `redis-server` (from `PATH` or `REDIS_SERVER_BIN`) are started on random p
 - Every Playwright call in `BrowserSession.load` goes through `abortable(promise, signal)`, because a call in flight when a context is closed may never settle and would wedge a stopping scan.
 - Never type a backslash-heavy regex through a shell command or heredoc; write the file with the editor tool. Prefer patterns that need no escapes (`[^a-zA-Z0-9]+`).
 - Everything the worker does to a scan row must be conditional on the status (`updateMany` with a `where` on status), so a scan cancelled or failed elsewhere is never overwritten.
+- Chromium's launch flags come from `chromiumArgs(noSandbox)` in `apps/worker/src/scan/browser.ts`, never a bare `[]` or a hardcoded list: `--disable-dev-shm-usage` is always on (most containers give Chromium far less `/dev/shm` than it wants), `--no-sandbox` only when `CHROMIUM_NO_SANDBOX=true`, which stays off by default everywhere because it weakens isolation.
+- `deploy/railway/` holds Beacon's Railway deployment (see `docs/RAILWAY.md`): one Dockerfile running the api and the worker together (Railway volumes attach to one service, and the two need the same screenshot files), one for `web` with an nginx config rendered from a template at container start (`PORT` and the api's private address are only known then). Neither touches the root `Dockerfile` or `docker-compose.yml`, which are for Docker Compose only.
 
 ## Windows dev notes
 

@@ -8,6 +8,7 @@ import { loadConfig } from './config.js';
 import { startScanWorker } from './jobs/scan-worker.js';
 import { createEmailSender, resolveProvider } from './notifications/email-sender.js';
 import { startNotifier } from './notifications/notifier.js';
+import { chromiumArgs } from './scan/browser.js';
 import { SHUTDOWN_FAILURE } from './scan/runner.js';
 import { createLogger } from './logger.js';
 import type { ScanJobData } from '@beacon/shared';
@@ -62,7 +63,10 @@ async function main(): Promise<void> {
     log,
     connection,
     shutdownSignal: shutdown.signal,
-    runner: { onFinished: (scanId) => announce(scanId) },
+    runner: {
+      onFinished: (scanId) => announce(scanId),
+      browserArgs: chromiumArgs(config.CHROMIUM_NO_SANDBOX),
+    },
   });
 
   // The scheduler starts scans itself, so it needs the producer side of the scan queue too.

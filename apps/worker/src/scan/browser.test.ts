@@ -1,6 +1,20 @@
 import { getEventListeners } from 'node:events';
 import { describe, expect, it } from 'vitest';
-import { abortable } from './browser.js';
+import { abortable, chromiumArgs, DEFAULT_CHROMIUM_ARGS } from './browser.js';
+
+describe('chromiumArgs', () => {
+  it('always disables /dev/shm, and adds --no-sandbox only when asked', () => {
+    expect(chromiumArgs(false)).toEqual(['--disable-dev-shm-usage']);
+    expect(chromiumArgs(false)).toEqual(DEFAULT_CHROMIUM_ARGS);
+    expect(chromiumArgs(true)).toEqual(['--disable-dev-shm-usage', '--no-sandbox']);
+  });
+
+  it('never mutates the shared default array', () => {
+    const before = [...DEFAULT_CHROMIUM_ARGS];
+    chromiumArgs(true);
+    expect(DEFAULT_CHROMIUM_ARGS).toEqual(before);
+  });
+});
 
 describe('abortable', () => {
   it('passes through the result and the error of a promise that settles', async () => {

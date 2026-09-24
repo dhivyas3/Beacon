@@ -23,6 +23,23 @@ export interface LoadedPage {
 const IGNORED_FAILURES = new Set(['net::ERR_ABORTED']);
 
 /**
+ * Chromium wants a shared-memory segment much bigger than the 64 MB a container runtime usually
+ * gives `/dev/shm` (Docker's own default, and most PaaS containers do not let this be raised).
+ * Writing those temp files to `/tmp` instead avoids the crash, so this is always on.
+ */
+export const DEFAULT_CHROMIUM_ARGS = ['--disable-dev-shm-usage'];
+
+/**
+ * The flags Chromium launches with. `noSandbox` adds `--no-sandbox`, only when asked: some
+ * container runtimes refuse to let Chromium set up its own sandbox ("No usable sandbox!"), but the
+ * flag genuinely weakens isolation against a page that exploits a Chromium bug, so it is never on
+ * by default, including in development and CI. See docs/RAILWAY.md.
+ */
+export function chromiumArgs(noSandbox: boolean): string[] {
+  return noSandbox ? [...DEFAULT_CHROMIUM_ARGS, '--no-sandbox'] : DEFAULT_CHROMIUM_ARGS;
+}
+
+/**
  * Settles as soon as the signal aborts, even if the browser never answers. Playwright calls that
  * are in flight when a context is closed do not always reject, and a scan that is stopping must not
  * wait for them.
@@ -60,7 +77,10 @@ export class BrowserSession {
   ) {}
 
   static async launch(options: BrowserOptions): Promise<BrowserSession> {
-    const browser = await chromium.launch({ headless: true, args: options.args ?? [] });
+    const browser = await chromium.launch({
+      headless: true,
+      args: options.args ?? DEFAULT_CHROMIUM_ARGS,
+    });
     const probe = await browser.newContext();
     const page = await probe.newPage();
     const base = await page.evaluate('navigator.userAgent');

@@ -60,7 +60,13 @@ docker compose -f docker-compose.yml -f deploy/docker-compose.caddy.yml up -d --
 ```
 
 Caddy gets a certificate for `BEACON_DOMAIN` by itself and renews it. The API applies database
-migrations on start and creates the first administrator from `SEED_ADMIN_*`. Open
+migrations on start; it does not seed the first admin by itself. Create one:
+
+```bash
+docker compose run --rm api pnpm --filter @beacon/db seed
+```
+
+Safe to run again later: an existing user with that email is left untouched. Open
 `https://beacon.example.com` and sign in.
 
 `deploy/Caddyfile` sends everything to the web container, which serves the dashboard and passes
@@ -113,6 +119,8 @@ runs up to `MAX_CONCURRENT_SCANS` at once, and the scheduler is safe with severa
 
 ## 7. Other ways to serve it
 
+- **Railway**: no host to manage, but no shared volume between two services either, so the api and
+  the worker deploy as one service there. See [docs/RAILWAY.md](RAILWAY.md).
 - **Behind an existing nginx, Traefik or load balancer**: publish only `web` (`WEB_PORT`), proxy to
   it, forward `X-Forwarded-Proto`, and disable response buffering for the event stream.
 - **Without Docker**: run `pnpm build`, then `node apps/api/dist/main.js` and
