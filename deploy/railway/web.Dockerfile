@@ -14,7 +14,7 @@ WORKDIR /repo
 COPY pnpm-lock.yaml pnpm-workspace.yaml package.json turbo.json tsconfig.base.json ./
 COPY packages ./packages
 COPY apps ./apps
-RUN --mount=type=cache,id=pnpm-store,target=/pnpm/store pnpm install --frozen-lockfile
+RUN --mount=type=cache,target=/pnpm/store pnpm install --frozen-lockfile
 # The full turbo build, same as the root Dockerfile: apps/web's own build assumes its workspace
 # dependencies (packages/shared and the rest) are already compiled, and turbo orders that for us.
 RUN pnpm build
